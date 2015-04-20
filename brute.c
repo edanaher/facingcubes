@@ -90,23 +90,9 @@ inline int adjacent(int a, int b) {
 }
 
 int distribution[100];
-void getDistribution(int dim, dimpairing *pairings) {
-  int d, i, j;
-  distribution[0] = 1 << dim;
-  for(d = 0; d < dim; d++) {
-    distribution[d + 1] = 0;
-    for(i = 0; i < pairings[d].len; i++)
-      for(j = 0; j < pairings[d].pairings[i].len; j++)
-        if(pairings[d].pairings[i].matched[j] == -1) {
-          distribution[d + 1]++;
-        }
-    distribution[0] -= distribution[d + 1] << (d + 1);
-  }
-}
 
 void printDistribution(int dim, dimpairing *pairings) {
   int i;
-  getDistribution(dim, pairings);
   printf("Distribution: ");
   for(i = 0; i <= dim; i++)
     printf("%d ", distribution[i]);
@@ -120,7 +106,6 @@ void updateDistributions(int dim, dimpairing *pairings) {
   int i, d;
   long long dist = 0, mult = 1;
 
-  getDistribution(dim, pairings);
   for(i = 0; i <= dim; i++) {
     dist += distribution[i] * mult;
     mult *= (1 << dim);
@@ -195,10 +180,18 @@ int mergeMatches(int dim, int curdim, int curp, dimpairing *pairings, int cur) {
     if(adjacent(otherCoords, coords) && curPairings.matched[other] == -1) {
       curPairings.matched[cur] = otherCoords;
       curPairings.matched[other] = coords;
+
+      distribution[curdim + 1] -= 2;
+      distribution[curdim + 2]++;
       int dims = curPairings.dims | (coords ^ otherCoords);
       addPair(dims, coords, pairings, curdim + 1);
+
       nmatches += mergeMatches(dim, curdim, curp, pairings, cur + 1);
+
       removePair(dims, coords, pairings, curdim + 1);
+      distribution[curdim + 1] += 2;
+      distribution[curdim + 2]--;
+
       curPairings.matched[cur] = -1;
       curPairings.matched[other] = -1;
     }
@@ -236,9 +229,13 @@ int buildMatches(int dim, int *matching, dimpairing *pairings, int cur) {
     if(other > cur && matching[other] == -1) {
       matching[cur] = other;
       matching[other] = cur;
+      distribution[0] -= 2;
+      distribution[1]++;
       addPair(b, cur, pairings, 0);
       nmatches += buildMatches(dim, matching, pairings, cur + 1);
       removePair(b, cur, pairings, 0);
+      distribution[1]--;
+      distribution[0] += 2;
       matching[other] = -1;
     }
   }
@@ -288,6 +285,8 @@ int main(int argc, char **argv) {
       pairings[d].pairings[i].matched = malloc(sizeof(int) * maxPairings);
     }
   }
+  for(d = 0; d <= dim; d++)
+    distribution[d] = 0;
 
   // Assume that 0 connects to 1.  This is a trivial symmetry that gives a
   // ~d-fold speedup for d dimensions.
@@ -298,6 +297,8 @@ int main(int argc, char **argv) {
   pairings[0].pairings[0].dims = 1;
   pairings[0].pairings[0].pairs[0] = 0;
   pairings[0].pairings[0].matched[0] = -1;
+  distribution[0] = (1 << dim) - 2;
+  distribution[1] = 1;
   buildMatches(dim, matching, pairings, 0);
   printDistributions("brute.out", dim);
 
