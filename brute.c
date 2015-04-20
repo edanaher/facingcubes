@@ -290,6 +290,15 @@ int main(int argc, char **argv) {
     }
   }
 
+  // Assume that 0 connects to 1.  This is a trivial symmetry that gives a
+  // ~d-fold speedup for d dimensions.
+  matching[0] = 1;
+  matching[1] = 0;
+  pairings[0].len = 1;
+  pairings[0].pairings[0].len = 1;
+  pairings[0].pairings[0].dims = 1;
+  pairings[0].pairings[0].pairs[0] = 0;
+  pairings[0].pairings[0].matched[0] = -1;
   int nmatches = buildMatches(dim, matching, 0, pairings, 0);
   printDistributions("brute.out", dim);
 
