@@ -171,7 +171,7 @@ int mergeMatches(int dim, int curdim, int curp, dimpairing *pairings, int cur) {
 
   int mustMatch = 0;
   for(other = 0; other < cur; other++)
-    if(adjacent(curPairings.pairs[other], coords) && curPairings.matched[other] == -1)
+    if(curPairings.matched[other] == -1 && adjacent(curPairings.pairs[other], coords))
       mustMatch = 1;
 
   int nmatches = 0;
