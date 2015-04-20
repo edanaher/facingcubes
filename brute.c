@@ -41,10 +41,10 @@ void addPair(int dims, int pair, dimpairing *pairings, int d) {
 
 void removePair(int dims, int pair, dimpairing *pairings, int d) {
   int p;
-  for(p = 0; p < pairings[d].len; p++)
+  for(p = pairings[d].len - 1; p >= 0; p--)
     if(dims == pairings[d].pairings[p].dims)
       break;
-  if(p == pairings[d].len)
+  if(p == -1)
     fatal("didn't find dimension while removing pair");
   int len = pairings[d].pairings[p].len;
   if(pairings[d].pairings[p].pairs[len - 1] != (pair & ~dims))
