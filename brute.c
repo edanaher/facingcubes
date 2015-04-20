@@ -84,7 +84,7 @@ void printMatches(int dim, int *matching, dimpairing *pairings, int ncubes) {
   printPairings(dim, pairings);
 }
 
-int adjacent(int a, int b) {
+inline int adjacent(int a, int b) {
   int diff = a ^ b;
   return !(diff & (diff - 1));
 }
@@ -99,8 +99,8 @@ void getDistribution(int dim, dimpairing *pairings) {
       for(j = 0; j < pairings[d].pairings[i].len; j++)
         if(pairings[d].pairings[i].matched[j] == -1) {
           distribution[d + 1]++;
-          distribution[0] -= 1 << (d + 1);
         }
+    distribution[0] -= distribution[d + 1] << (d + 1);
   }
 }
 
@@ -142,7 +142,6 @@ void printDistributions(char *filename, int dim) {
   int i, d;
   long long t;
   int *dist = malloc(sizeof(int) * (dim + 1));
-  int mult;
   FILE *fout = fopen(filename, "w");
 
   for(d = 0; d < ndistributions; d++) {
@@ -210,7 +209,7 @@ int mergeMatches(int dim, int curdim, int curp, dimpairing *pairings, int cur) {
   return nmatches;
 }
 
-int buildMatches(int dim, int *matching, int npairdims, dimpairing *pairings, int cur) {
+int buildMatches(int dim, int *matching, dimpairing *pairings, int cur) {
   int ncubes = 1 << dim;
   int b, other;
   int nmatches = 0;
@@ -238,7 +237,7 @@ int buildMatches(int dim, int *matching, int npairdims, dimpairing *pairings, in
       matching[cur] = other;
       matching[other] = cur;
       addPair(b, cur, pairings, 0);
-      nmatches += buildMatches(dim, matching, npairdims, pairings, cur + 1);
+      nmatches += buildMatches(dim, matching, pairings, cur + 1);
       removePair(b, cur, pairings, 0);
       matching[other] = -1;
     }
@@ -247,7 +246,7 @@ int buildMatches(int dim, int *matching, int npairdims, dimpairing *pairings, in
   matching[cur] = -1;
   // And if we don't have to match it, try leaving it unmatched.
   if(!mustMatch) {
-    nmatches += buildMatches(dim, matching, npairdims, pairings, cur + 1);
+    nmatches += buildMatches(dim, matching, pairings, cur + 1);
   }
 
   return nmatches;
@@ -299,7 +298,7 @@ int main(int argc, char **argv) {
   pairings[0].pairings[0].dims = 1;
   pairings[0].pairings[0].pairs[0] = 0;
   pairings[0].pairings[0].matched[0] = -1;
-  int nmatches = buildMatches(dim, matching, 0, pairings, 0);
+  buildMatches(dim, matching, pairings, 0);
   printDistributions("brute.out", dim);
 
   return 1;
