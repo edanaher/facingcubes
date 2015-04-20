@@ -302,5 +302,5 @@ int main(int argc, char **argv) {
   buildMatches(dim, matching, pairings, 0);
   printDistributions("brute.out", dim);
 
-  return 1;
+  return 0;
 }
