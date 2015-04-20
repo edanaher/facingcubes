@@ -1,10 +1,13 @@
 #include <stdio.h>
+#include <signal.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 typedef struct  {
   int dims;
   int len;
   int *pairs;
+  int *matched;
 } pairing;
 
 typedef struct {
@@ -18,6 +21,8 @@ int fatal(char *msg) {
   exit(1);
 }
 
+int global_dim;
+
 void addPair(int dims, int pair, dimpairing *pairings, int d) {
   int p;
   for(p = 0; p < pairings[d].len; p++)
@@ -30,6 +35,7 @@ void addPair(int dims, int pair, dimpairing *pairings, int d) {
   }
   int len = pairings[d].pairings[p].len;
   pairings[d].pairings[p].pairs[len] = pair & ~dims;
+  pairings[d].pairings[p].matched[len] = -1;
   pairings[d].pairings[p].len++;
 }
 
@@ -41,7 +47,7 @@ void removePair(int dims, int pair, dimpairing *pairings, int d) {
   if(p == pairings[d].len)
     fatal("didn't find dimension while removing pair");
   int len = pairings[d].pairings[p].len;
-  if(pairings[d].pairings[p].pairs[len - 1] != pair & ~dims)
+  if(pairings[d].pairings[p].pairs[len - 1] != (pair & ~dims))
     fatal("removing pair not at end of pairs list");
   pairings[d].pairings[p].len--;
   if(!pairings[d].pairings[p].len) {
@@ -51,9 +57,22 @@ void removePair(int dims, int pair, dimpairing *pairings, int d) {
   }
 }
 
+void printPairings(int dim, dimpairing *pairings) {
+  int d, i, j;
+  for(d = 0; d < dim; d++) {
+    for(i = 0; i < pairings[d].len; i++) {
+      printf("  %d dim %d:", d, pairings[d].pairings[i].dims);
+      for(j = 0; j < pairings[d].pairings[i].len; j++) {
+        printf(" %s%d[0m", pairings[d].pairings[i].matched[j] == -1 ? "" : "[30;1m", pairings[d].pairings[i].pairs[j]);
+      }
+      printf("\n");
+    }
+  }
+}
+
 void printMatches(int dim, int *matching, dimpairing *pairings, int ncubes) {
   int matched = 0;
-  int i, j, d;
+  int i;
   for(i = 0; i < ncubes; i++)
     if(matching[i] > i)
       matched++;
@@ -62,24 +81,144 @@ void printMatches(int dim, int *matching, dimpairing *pairings, int ncubes) {
     if(matching[i] > i)
       printf("%d-%d  ", i, matching[i]);
   printf("\n");
+  printPairings(dim, pairings);
+}
+
+int adjacent(int a, int b) {
+  int diff = a ^ b;
+  return !(diff & (diff - 1));
+}
+
+int distribution[100];
+void getDistribution(int dim, dimpairing *pairings) {
+  int d, i, j;
+  distribution[0] = 1 << dim;
   for(d = 0; d < dim; d++) {
-    for(i = 0; i < pairings[d].len; i++) {
-      printf("  %d dim %d:", d, pairings[d].pairings[i].dims);
+    distribution[d + 1] = 0;
+    for(i = 0; i < pairings[d].len; i++)
       for(j = 0; j < pairings[d].pairings[i].len; j++)
-        printf(" %d", pairings[d].pairings[i].pairs[j]);
-      printf("\n");
-    }
+        if(pairings[d].pairings[i].matched[j] == -1) {
+          distribution[d + 1]++;
+          distribution[0] -= 1 << (d + 1);
+        }
   }
 }
 
-int buildMatches(int dim, int *matching, int npairdims, pairing *pairings, int cur) {
+void printDistribution(int dim, dimpairing *pairings) {
+  int i;
+  getDistribution(dim, pairings);
+  printf("Distribution: ");
+  for(i = 0; i <= dim; i++)
+    printf("%d ", distribution[i]);
+  printf("\n");
+}
+
+int ndistributions = 0;
+long long distributions[10000][2];
+
+void updateDistributions(int dim, dimpairing *pairings) {
+  int i, d;
+  long long dist = 0, mult = 1;
+
+  getDistribution(dim, pairings);
+  for(i = 0; i <= dim; i++) {
+    dist += distribution[i] * mult;
+    mult *= (1 << dim);
+  }
+
+  for(d = 0; d < ndistributions; d++)
+    if(distributions[d][0] == dist)
+      break;
+  if(d == ndistributions) {
+    ndistributions++;
+    distributions[d][0] = dist;
+    distributions[d][1] = 0;
+  }
+
+  distributions[d][1]++;
+}
+
+void printDistributions(char *filename, int dim) {
+  int i, d;
+  long long t;
+  int *dist = malloc(sizeof(int) * (dim + 1));
+  int mult;
+  FILE *fout = fopen(filename, "w");
+
+  for(d = 0; d < ndistributions; d++) {
+    t = distributions[d][0];
+    for(i = 0; i <= dim; i++) {
+      dist[i] = t % (1 << dim);
+      t /= (1 << dim);
+    }
+
+    fprintf(fout, "%-12lld ", distributions[d][1]);
+    for(i = 0; i <= dim; i++)
+      fprintf(fout, " %d", dist[i]);
+    fprintf(fout, "\n");
+  }
+
+  fclose(fout);
+}
+
+void signalHandler(int sig) {
+  printDistributions("brute.wip", global_dim);
+}
+
+int mergeMatches(int dim, int curdim, int curp, dimpairing *pairings, int cur) {
+  pairing curPairings = pairings[curdim].pairings[curp];
+  for(; cur < curPairings.len && curPairings.matched[cur] != -1; cur++);
+  if(cur == curPairings.len) {  // No more unmatched pairs
+    if(curp < pairings[curdim].len)
+      return mergeMatches(dim, curdim, curp + 1, pairings, 0);
+    else if(curdim + 1 < dim)
+      return mergeMatches(dim, curdim + 1, 0, pairings, 0);
+    else {
+      //printf("===== Complete =========\n");
+      //printPairings(dim, pairings);
+      //printDistribution(dim, pairings);
+      updateDistributions(dim, pairings);
+      return 1;
+    }
+  }
+
+  int coords = curPairings.pairs[cur];
+  int other;
+
+  int mustMatch = 0;
+  for(other = 0; other < cur; other++)
+    if(adjacent(curPairings.pairs[other], coords) && curPairings.matched[other] == -1)
+      mustMatch = 1;
+
+  int nmatches = 0;
+  for(other = cur + 1; other < curPairings.len; other++) {
+    int otherCoords = curPairings.pairs[other];
+    if(adjacent(otherCoords, coords) && curPairings.matched[other] == -1) {
+      curPairings.matched[cur] = otherCoords;
+      curPairings.matched[other] = coords;
+      int dims = curPairings.dims | (coords ^ otherCoords);
+      addPair(dims, coords, pairings, curdim + 1);
+      nmatches += mergeMatches(dim, curdim, curp, pairings, cur + 1);
+      removePair(dims, coords, pairings, curdim + 1);
+      curPairings.matched[cur] = -1;
+      curPairings.matched[other] = -1;
+    }
+  }
+
+  if(!mustMatch)
+    nmatches += mergeMatches(dim, curdim, curp, pairings, cur + 1);
+  return nmatches;
+}
+
+int buildMatches(int dim, int *matching, int npairdims, dimpairing *pairings, int cur) {
   int ncubes = 1 << dim;
   int b, other;
   int nmatches = 0;
 
   for(; cur < ncubes && matching[cur] != -1; cur++);
   if(cur == ncubes) { // No more unmatched cubes
-    printMatches(dim, matching, pairings, ncubes);
+    //printMatches(dim, matching, pairings, ncubes);
+    mergeMatches(dim, 0, 0, pairings, 0);
     return 1;
   }
 
@@ -120,8 +259,12 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+  printf("pid is %d\n", getpid());
+
   int dim;
   sscanf(argv[1], "%d", &dim);
+  global_dim = dim;
+  signal(SIGUSR2, signalHandler);
   int ncubes = 1 << dim;
   int i, d;
 
@@ -136,15 +279,19 @@ int main(int argc, char **argv) {
   // - pairs: a list of all merged pairs merged along that dimension
   //          (normalized with shared dimensions set to 0
   // - len: the length of pairs.
-  int maxPairings = ncubes / 2;
+  int maxPairings = ncubes;
   dimpairing *pairings = malloc(sizeof(dimpairing) * dim);
   for(d = 0; d < dim; d++) {
     pairings[d].len = 0;
     pairings[d].pairings = malloc(sizeof(pairing *) * maxPairings);
-    for(i = 0; i < maxPairings; i++)
+    for(i = 0; i < maxPairings; i++) {
       pairings[d].pairings[i].pairs = malloc(sizeof(int) * maxPairings);
+      pairings[d].pairings[i].matched = malloc(sizeof(int) * maxPairings);
+    }
   }
 
   int nmatches = buildMatches(dim, matching, 0, pairings, 0);
-  printf("Found %d matches\n", nmatches);
+  printDistributions("brute.out", dim);
+
+  return 1;
 }
