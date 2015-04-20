@@ -7,49 +7,53 @@ typedef struct  {
   int *pairs;
 } pairing;
 
+typedef struct {
+  int len;
+  pairing *pairings;
+} dimpairing;
+
+
 int fatal(char *msg) {
   printf("Fatal error: %s\n", msg);
   exit(1);
 }
 
-int addPair(int dims, int pair, int npairdims, pairing *pairings) {
+void addPair(int dims, int pair, dimpairing *pairings, int d) {
   int p;
-  for(p = 0; p < npairdims; p++)
-    if(dims == pairings[p].dims)
+  for(p = 0; p < pairings[d].len; p++)
+    if(dims == pairings[d].pairings[p].dims)
       break;
-  if(p == npairdims) {
-    pairings[p].dims = dims;
-    pairings[p].len = 0;
-    npairdims++;
+  if(p == pairings[d].len) {
+    pairings[d].pairings[p].dims = dims;
+    pairings[d].pairings[p].len = 0;
+    pairings[d].len++;
   }
-  int len = pairings[p].len;
-  pairings[p].pairs[len] = pair & ~dims;
-  pairings[p].len++;
-  return npairdims;
+  int len = pairings[d].pairings[p].len;
+  pairings[d].pairings[p].pairs[len] = pair & ~dims;
+  pairings[d].pairings[p].len++;
 }
 
-int removePair(int dims, int pair, int npairdims, pairing *pairings) {
+void removePair(int dims, int pair, dimpairing *pairings, int d) {
   int p;
-  for(p = 0; p < npairdims; p++)
-    if(dims == pairings[p].dims)
+  for(p = 0; p < pairings[d].len; p++)
+    if(dims == pairings[d].pairings[p].dims)
       break;
-  if(p == npairdims)
+  if(p == pairings[d].len)
     fatal("didn't find dimension while removing pair");
-  int len = pairings[p].len;
-  if(pairings[p].pairs[len - 1] != pair & ~dims)
+  int len = pairings[d].pairings[p].len;
+  if(pairings[d].pairings[p].pairs[len - 1] != pair & ~dims)
     fatal("removing pair not at end of pairs list");
-  pairings[p].len--;
-  if(!pairings[p].len) {
-    if(p != npairdims - 1)
+  pairings[d].pairings[p].len--;
+  if(!pairings[d].pairings[p].len) {
+    if(p != pairings[d].len - 1)
       fatal("removing paired dimension not at end of dimensions list");
-    npairdims--;
+    pairings[d].len--;
   }
-  return npairdims;
 }
 
-void printMatches(int *matching, int npairdims, pairing *pairings, int ncubes) {
+void printMatches(int dim, int *matching, dimpairing *pairings, int ncubes) {
   int matched = 0;
-  int i, j;
+  int i, j, d;
   for(i = 0; i < ncubes; i++)
     if(matching[i] > i)
       matched++;
@@ -58,11 +62,13 @@ void printMatches(int *matching, int npairdims, pairing *pairings, int ncubes) {
     if(matching[i] > i)
       printf("%d-%d  ", i, matching[i]);
   printf("\n");
-  for(i = 0; i < npairdims; i++) {
-    printf("  dim %d:", pairings[i].dims);
-    for(j = 0; j < pairings[i].len; j++)
-      printf(" %d", pairings[i].pairs[j]);
-    printf("\n");
+  for(d = 0; d < dim; d++) {
+    for(i = 0; i < pairings[d].len; i++) {
+      printf("  %d dim %d:", d, pairings[d].pairings[i].dims);
+      for(j = 0; j < pairings[d].pairings[i].len; j++)
+        printf(" %d", pairings[d].pairings[i].pairs[j]);
+      printf("\n");
+    }
   }
 }
 
@@ -73,7 +79,7 @@ int buildMatches(int dim, int *matching, int npairdims, pairing *pairings, int c
 
   for(; cur < ncubes && matching[cur] != -1; cur++);
   if(cur == ncubes) { // No more unmatched cubes
-    printMatches(matching, npairdims, pairings, ncubes);
+    printMatches(dim, matching, pairings, ncubes);
     return 1;
   }
 
@@ -92,9 +98,9 @@ int buildMatches(int dim, int *matching, int npairdims, pairing *pairings, int c
     if(other > cur && matching[other] == -1) {
       matching[cur] = other;
       matching[other] = cur;
-      npairdims = addPair(b, cur, npairdims, pairings);
+      addPair(b, cur, pairings, 0);
       nmatches += buildMatches(dim, matching, npairdims, pairings, cur + 1);
-      npairdims = removePair(b, cur, npairdims, pairings);
+      removePair(b, cur, pairings, 0);
       matching[other] = -1;
     }
   }
@@ -117,22 +123,27 @@ int main(int argc, char **argv) {
   int dim;
   sscanf(argv[1], "%d", &dim);
   int ncubes = 1 << dim;
-  int i;
+  int i, d;
 
   // Map of each cube to its match in the top-level matching.
   int *matching = malloc(sizeof(int) * ncubes);
   for(i = 0; i < ncubes; i++)
     matching[i] = -1;
 
-  // pairings[d] is the list of all pairings that share pairings[d].dims:
-  // - dims: a // bitmask with 1s on the shared dimensions)
+  // pairings[d][p] is the list of all pairings with d+1 shared dimensions that
+  // share pairings[d][p].dims: - dims: a // bitmask with 1s on the shared
+  // dimensions)
   // - pairs: a list of all merged pairs merged along that dimension
   //          (normalized with shared dimensions set to 0
   // - len: the length of pairs.
   int maxPairings = ncubes / 2;
-  pairing *pairings = malloc(sizeof(int *) * maxPairings);
-  for(i = 0; i < maxPairings; i++)
-    pairings[i].pairs = malloc(sizeof(int) * maxPairings);
+  dimpairing *pairings = malloc(sizeof(dimpairing) * dim);
+  for(d = 0; d < dim; d++) {
+    pairings[d].len = 0;
+    pairings[d].pairings = malloc(sizeof(pairing *) * maxPairings);
+    for(i = 0; i < maxPairings; i++)
+      pairings[d].pairings[i].pairs = malloc(sizeof(int) * maxPairings);
+  }
 
   int nmatches = buildMatches(dim, matching, 0, pairings, 0);
   printf("Found %d matches\n", nmatches);
