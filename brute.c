@@ -202,35 +202,6 @@ int mergeMatches(int dim, int curdim, int curp, dimpairing *pairings, int cur) {
   return nmatches;
 }
 
-int hash(dimpairing *pairings, int mirror) {
-  int p, i;
-  int h = 0;
-  int m;
-  for(p = 0; p < pairings[0].len; p++) {
-    int flipper = mirror & ~pairings[0].pairings[p].dims;
-    m = 1;
-    for(i = pairings[0].pairings[p].len - 1; i >= 0; i--) {
-      h += (pairings[0].pairings[p].pairs[i] ^ flipper) * m;
-      m *= 2;
-    }
-    h *= pairings[0].pairings[p].dims;
-  }
-  return h;
-}
-
-int checkCanonical(int dim, dimpairing *pairings) {
-  int myHash = hash(pairings, 0);
-  int i;
-  for(i = 1; i < (1 << dim); i = i << 1) {
-    int h = hash(pairings, i);
-    if(h < myHash) {
-      //printf("%d lost to %d\n", myHash, h);
-      return 0;
-    }
-  }
-  return 1;
-}
-
 int buildMatches(int dim, int *matching, dimpairing *pairings, int cur) {
   int ncubes = 1 << dim;
   int b, other;
@@ -238,10 +209,7 @@ int buildMatches(int dim, int *matching, dimpairing *pairings, int cur) {
 
   for(; cur < ncubes && matching[cur] != -1; cur++);
   if(cur == ncubes) { // No more unmatched cubes
-    if(!checkCanonical(dim, pairings)) {
-      //printMatches(dim, matching, pairings, ncubes);
-      return 0;
-    }
+    //printMatches(dim, matching, pairings, ncubes);
     mergeMatches(dim, 0, 0, pairings, 0);
     return 1;
   }
@@ -264,8 +232,7 @@ int buildMatches(int dim, int *matching, dimpairing *pairings, int cur) {
       distribution[0] -= 2;
       distribution[1]++;
       addPair(b, cur, pairings, 0);
-      if(checkCanonical(dim, pairings))
-        nmatches += buildMatches(dim, matching, pairings, cur + 1);
+      nmatches += buildMatches(dim, matching, pairings, cur + 1);
       removePair(b, cur, pairings, 0);
       distribution[1]--;
       distribution[0] += 2;
@@ -318,8 +285,7 @@ int main(int argc, char **argv) {
       pairings[d].pairings[i].matched = malloc(sizeof(int) * maxPairings);
     }
   }
-  distribution[0] = 1 << dim;
-  for(d = 1; d <= dim; d++)
+  for(d = 0; d <= dim; d++)
     distribution[d] = 0;
 
   // Assume that 0 connects to 1.  This is a trivial symmetry that gives a
@@ -333,8 +299,7 @@ int main(int argc, char **argv) {
   pairings[0].pairings[0].matched[0] = -1;
   distribution[0] = (1 << dim) - 2;
   distribution[1] = 1;
-  int nmatches = buildMatches(dim, matching, pairings, 0);
-  printf("%d top-level matchings checked\n", nmatches);
+  buildMatches(dim, matching, pairings, 0);
   printDistributions("brute.out", dim);
 
   return 0;
