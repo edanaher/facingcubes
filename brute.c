@@ -149,14 +149,14 @@ void signalHandler(int sig) {
   printDistributions("brute.wip", global_dim);
 }
 
-int mergeMatches(int dim, int curdim, int curp, dimpairing *pairings, int cur) {
-  pairing curPairings = pairings[curdim].pairings[curp];
-  for(; cur < curPairings.len && curPairings.matched[cur] != -1; cur++);
-  if(cur == curPairings.len) {  // No more unmatched pairs
+int mergeMatches(int dim, int curdim, int curp, dimpairing *pairings, int cur, pairing *curPairings) {
+  //pairing curPairings = pairings[curdim].pairings[curp];
+  for(; cur < curPairings->len && curPairings->matched[cur] != -1; cur++);
+  if(cur == curPairings->len) {  // No more unmatched pairs
     if(curp < pairings[curdim].len)
-      return mergeMatches(dim, curdim, curp + 1, pairings, 0);
+      return mergeMatches(dim, curdim, curp + 1, pairings, 0, &pairings[curdim].pairings[curp + 1]);
     else if(curdim + 1 < dim)
-      return mergeMatches(dim, curdim + 1, 0, pairings, 0);
+      return mergeMatches(dim, curdim + 1, 0, pairings, 0, pairings[curdim + 1].pairings);
     else {
       //printf("===== Complete =========\n");
       //printPairings(dim, pairings);
@@ -166,39 +166,39 @@ int mergeMatches(int dim, int curdim, int curp, dimpairing *pairings, int cur) {
     }
   }
 
-  int coords = curPairings.pairs[cur];
+  int coords = curPairings->pairs[cur];
   int other;
 
   int mustMatch = 0;
   for(other = 0; other < cur; other++)
-    if(curPairings.matched[other] == -1 && adjacent(curPairings.pairs[other], coords))
+    if(curPairings->matched[other] == -1 && adjacent(curPairings->pairs[other], coords))
       mustMatch = 1;
 
   int nmatches = 0;
-  for(other = cur + 1; other < curPairings.len; other++) {
-    int otherCoords = curPairings.pairs[other];
-    if(adjacent(otherCoords, coords) && curPairings.matched[other] == -1) {
-      curPairings.matched[cur] = otherCoords;
-      curPairings.matched[other] = coords;
+  for(other = cur + 1; other < curPairings->len; other++) {
+    int otherCoords = curPairings->pairs[other];
+    if(adjacent(otherCoords, coords) && curPairings->matched[other] == -1) {
+      curPairings->matched[cur] = otherCoords;
+      curPairings->matched[other] = coords;
 
       distribution[curdim + 1] -= 2;
       distribution[curdim + 2]++;
-      int dims = curPairings.dims | (coords ^ otherCoords);
+      int dims = curPairings->dims | (coords ^ otherCoords);
       addPair(dims, coords, pairings, curdim + 1);
 
-      nmatches += mergeMatches(dim, curdim, curp, pairings, cur + 1);
+      nmatches += mergeMatches(dim, curdim, curp, pairings, cur + 1, curPairings);
 
       removePair(dims, coords, pairings, curdim + 1);
       distribution[curdim + 1] += 2;
       distribution[curdim + 2]--;
 
-      curPairings.matched[cur] = -1;
-      curPairings.matched[other] = -1;
+      curPairings->matched[cur] = -1;
+      curPairings->matched[other] = -1;
     }
   }
 
   if(!mustMatch)
-    nmatches += mergeMatches(dim, curdim, curp, pairings, cur + 1);
+    nmatches += mergeMatches(dim, curdim, curp, pairings, cur + 1, curPairings);
   return nmatches;
 }
 
@@ -250,7 +250,7 @@ int buildMatches(int dim, int *matching, dimpairing *pairings, int cur) {
     //printMatches(dim, matching, pairings, ncubes);
     if(!checkCanonical(dim, pairings))
       return 0;
-    mergeMatches(dim, 0, 0, pairings, 0);
+    mergeMatches(dim, 0, 0, pairings, 0, pairings[0].pairings);
     return 1;
   }
 
