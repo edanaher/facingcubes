@@ -202,6 +202,44 @@ int mergeMatches(int dim, int curdim, int curp, dimpairing *pairings, int cur) {
   return nmatches;
 }
 
+// This hash function is safe with other optimizations; it only cares about the
+// coordinates used, not the ordering; we will try each mirroring (at least)
+// once.  Hash functions that depend on ordering don't work, because we'll only
+// try one ordering of each coordinate set, since we add them in order to avoid
+// duplication.
+// It might be worth trying storing pairings we've tried; then we could be
+// stricter, but then space usage would scale dramatically with dimension.
+int hash(dimpairing *pairings, int mirror) {
+  int p, i;
+  int h = 0;
+  int m;
+  for(p = 0; p < pairings[0].len; p++) {
+    int flipper = mirror & ~pairings[0].pairings[p].dims;
+    for(i = 0; i < pairings[0].pairings[p].len; i++) {
+      h += (pairings[0].pairings[p].pairs[i] ^ flipper);
+    }
+  }
+  return h;
+}
+
+// Interestingly, at least for dimension five, this flipping strategy (each
+// dimension once) dedups just as well as trying all 64 flippings, and is
+// significantly faster.  Since this already takes 10% of the total runtime,
+// stick with it.
+int checkCanonical(int dim, dimpairing *pairings) {
+  int myHash = hash(pairings, 0);
+  int i;
+  for(i = 1; i < (1 << dim); i = i << 1) {
+    int h = hash(pairings, i);
+    if(h < myHash) {
+      //printf("%d lost to %d\n", myHash, h);
+      return 0;
+    }
+  }
+  return 1;
+}
+
+
 int buildMatches(int dim, int *matching, dimpairing *pairings, int cur) {
   int ncubes = 1 << dim;
   int b, other;
@@ -210,6 +248,8 @@ int buildMatches(int dim, int *matching, dimpairing *pairings, int cur) {
   for(; cur < ncubes && matching[cur] != -1; cur++);
   if(cur == ncubes) { // No more unmatched cubes
     //printMatches(dim, matching, pairings, ncubes);
+    if(!checkCanonical(dim, pairings))
+      return 0;
     mergeMatches(dim, 0, 0, pairings, 0);
     return 1;
   }
@@ -299,7 +339,8 @@ int main(int argc, char **argv) {
   pairings[0].pairings[0].matched[0] = -1;
   distribution[0] = (1 << dim) - 2;
   distribution[1] = 1;
-  buildMatches(dim, matching, pairings, 0);
+  int matches = buildMatches(dim, matching, pairings, 0);
+  printf("Top-level checks: %d\n", matches);
   printDistributions("brute.out", dim);
 
   return 0;
