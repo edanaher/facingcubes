@@ -212,31 +212,27 @@ void mirror(dimpairing *pairings, int mirror) {
   }
 }
 
-int hash(dimpairing *pairings) {
+int hash(dimpairing *pairings, int mirror) {
   int p, i;
   int h = 0;
   for(p = 0; p < pairings[0].len; p++) {
+    int flipper = mirror & ~pairings[0].pairings[p].dims;
     for(i = 0; i < pairings[0].pairings[p].len; i++)
-      h += (pairings[0].pairings[p].pairs[i] + 1) * pairings[p].len;
+      h += ((pairings[0].pairings[p].pairs[i] ^ flipper) + 1) * pairings[p].len;
     h *= pairings[0].pairings[p].dims;
   }
   return h;
 }
 
 int checkCanonical(int dim, dimpairing *pairings) {
-  int myHash = hash(pairings);
+  int myHash = hash(pairings, 0);
   int i;
-  int canonical = 1;
   for(i = 1; i < (1 << dim); i = i << 1) {
-    mirror(pairings, i);
-    int h = hash(pairings);
-    //printf("Comparing hash: %d %d\n", myHash, h);
+    int h = hash(pairings, i);
     if(h < myHash)
-      canonical = 0;
+      return 0;
   }
-  mirror(pairings, i - 1);
-  //printf("%d\n", canonical);
-  return canonical;
+  return 1;
 }
 
 int buildMatches(int dim, int *matching, dimpairing *pairings, int cur) {
