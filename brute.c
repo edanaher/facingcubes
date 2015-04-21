@@ -202,23 +202,17 @@ int mergeMatches(int dim, int curdim, int curp, dimpairing *pairings, int cur) {
   return nmatches;
 }
 
-void mirror(dimpairing *pairings, int mirror) {
-  int p, i;
-  for(p = 0; p < pairings[0].len; p++) {
-    int flipper = mirror & ~pairings[0].pairings[p].dims;
-    for(i = 0; i < pairings[0].pairings[p].len; i++) {
-      pairings[0].pairings[p].pairs[i] ^= flipper;
-    }
-  }
-}
-
 int hash(dimpairing *pairings, int mirror) {
   int p, i;
   int h = 0;
+  int m;
   for(p = 0; p < pairings[0].len; p++) {
     int flipper = mirror & ~pairings[0].pairings[p].dims;
-    for(i = 0; i < pairings[0].pairings[p].len; i++)
-      h += ((pairings[0].pairings[p].pairs[i] ^ flipper) + 1) * pairings[p].len;
+    m = 1;
+    for(i = pairings[0].pairings[p].len - 1; i >= 0; i--) {
+      h += (pairings[0].pairings[p].pairs[i] ^ flipper) * m;
+      m *= 2;
+    }
     h *= pairings[0].pairings[p].dims;
   }
   return h;
@@ -229,8 +223,10 @@ int checkCanonical(int dim, dimpairing *pairings) {
   int i;
   for(i = 1; i < (1 << dim); i = i << 1) {
     int h = hash(pairings, i);
-    if(h < myHash)
+    if(h < myHash) {
+      //printf("%d lost to %d\n", myHash, h);
       return 0;
+    }
   }
   return 1;
 }
@@ -242,9 +238,10 @@ int buildMatches(int dim, int *matching, dimpairing *pairings, int cur) {
 
   for(; cur < ncubes && matching[cur] != -1; cur++);
   if(cur == ncubes) { // No more unmatched cubes
-    //printMatches(dim, matching, pairings, ncubes);
-    if(!checkCanonical(dim, pairings))
+    if(!checkCanonical(dim, pairings)) {
+      //printMatches(dim, matching, pairings, ncubes);
       return 0;
+    }
     mergeMatches(dim, 0, 0, pairings, 0);
     return 1;
   }
@@ -267,7 +264,8 @@ int buildMatches(int dim, int *matching, dimpairing *pairings, int cur) {
       distribution[0] -= 2;
       distribution[1]++;
       addPair(b, cur, pairings, 0);
-      nmatches += buildMatches(dim, matching, pairings, cur + 1);
+      if(checkCanonical(dim, pairings))
+        nmatches += buildMatches(dim, matching, pairings, cur + 1);
       removePair(b, cur, pairings, 0);
       distribution[1]--;
       distribution[0] += 2;
@@ -320,7 +318,8 @@ int main(int argc, char **argv) {
       pairings[d].pairings[i].matched = malloc(sizeof(int) * maxPairings);
     }
   }
-  for(d = 0; d <= dim; d++)
+  distribution[0] = 1 << dim;
+  for(d = 1; d <= dim; d++)
     distribution[d] = 0;
 
   // Assume that 0 connects to 1.  This is a trivial symmetry that gives a
