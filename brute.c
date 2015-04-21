@@ -202,6 +202,43 @@ int mergeMatches(int dim, int curdim, int curp, dimpairing *pairings, int cur) {
   return nmatches;
 }
 
+void mirror(dimpairing *pairings, int mirror) {
+  int p, i;
+  for(p = 0; p < pairings[0].len; p++) {
+    int flipper = mirror & ~pairings[0].pairings[p].dims;
+    for(i = 0; i < pairings[0].pairings[p].len; i++) {
+      pairings[0].pairings[p].pairs[i] ^= flipper;
+    }
+  }
+}
+
+int hash(dimpairing *pairings) {
+  int p, i;
+  int h = 0;
+  for(p = 0; p < pairings[0].len; p++) {
+    for(i = 0; i < pairings[0].pairings[p].len; i++)
+      h += (pairings[0].pairings[p].pairs[i] + 1) * pairings[p].len;
+    h *= pairings[0].pairings[p].dims;
+  }
+  return h;
+}
+
+int checkCanonical(int dim, dimpairing *pairings) {
+  int myHash = hash(pairings);
+  int i;
+  int canonical = 1;
+  for(i = 1; i < (1 << dim); i = i << 1) {
+    mirror(pairings, i);
+    int h = hash(pairings);
+    //printf("Comparing hash: %d %d\n", myHash, h);
+    if(h < myHash)
+      canonical = 0;
+  }
+  mirror(pairings, i - 1);
+  //printf("%d\n", canonical);
+  return canonical;
+}
+
 int buildMatches(int dim, int *matching, dimpairing *pairings, int cur) {
   int ncubes = 1 << dim;
   int b, other;
@@ -210,6 +247,8 @@ int buildMatches(int dim, int *matching, dimpairing *pairings, int cur) {
   for(; cur < ncubes && matching[cur] != -1; cur++);
   if(cur == ncubes) { // No more unmatched cubes
     //printMatches(dim, matching, pairings, ncubes);
+    if(!checkCanonical(dim, pairings))
+      return 0;
     mergeMatches(dim, 0, 0, pairings, 0);
     return 1;
   }
@@ -299,7 +338,8 @@ int main(int argc, char **argv) {
   pairings[0].pairings[0].matched[0] = -1;
   distribution[0] = (1 << dim) - 2;
   distribution[1] = 1;
-  buildMatches(dim, matching, pairings, 0);
+  int nmatches = buildMatches(dim, matching, pairings, 0);
+  printf("%d top-level matchings checked\n", nmatches);
   printDistributions("brute.out", dim);
 
   return 0;
