@@ -146,7 +146,9 @@ void printDistributions(char *filename, int dim) {
 }
 
 void signalHandler(int sig) {
-  printDistributions("brute.wip", global_dim);
+  char filename[100];
+  sprintf(filename, "results/brute.%d.wip", global_dim);
+  printDistributions(filename, global_dim);
 }
 
 int mergeMatches(int dim, int curdim, int curp, dimpairing *pairings, int cur, pairing *curPairings) {
@@ -212,7 +214,6 @@ int mergeMatches(int dim, int curdim, int curp, dimpairing *pairings, int cur, p
 int hash(dimpairing *pairings, int mirror) {
   int p, i;
   int h = 0;
-  int m;
   for(p = 0; p < pairings[0].len; p++) {
     int flipper = mirror & ~pairings[0].pairings[p].dims;
     for(i = 0; i < pairings[0].pairings[p].len; i++) {
@@ -341,7 +342,9 @@ int main(int argc, char **argv) {
   distribution[1] = 1;
   int matches = buildMatches(dim, matching, pairings, 0);
   printf("Top-level checks: %d\n", matches);
-  printDistributions("brute.out", dim);
+  char filename[100];
+  sprintf(filename, "results/brute.%d.out", dim);
+  printDistributions(filename, dim);
 
   return 0;
 }
