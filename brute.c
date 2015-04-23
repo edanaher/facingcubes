@@ -180,12 +180,21 @@ int mergeMatches(int dim, int curdim, int curp, dimpairing *pairings, int cur, p
   for(other = cur + 1; other < curPairings->len; other++) {
     int otherCoords = curPairings->pairs[other];
     if(adjacent(otherCoords, coords) && curPairings->matched[other] == -1) {
+      int newDim = coords ^ otherCoords;
+      // only merge "upwards"; if we have dimensions 1 and 2, merge the two 1's
+      // into 2's, but don't merge the two 2's into 1's.  They have the same
+      // result, so it's a waste of time to do both.
+      // And this direction works nicely with assuming 0-1 pairing, since that
+      // will always merge if possible.
+      if(((newDim - 1) & curPairings->dims) != curPairings->dims)
+        continue;
+
       curPairings->matched[cur] = otherCoords;
       curPairings->matched[other] = coords;
 
       distribution[curdim + 1] -= 2;
       distribution[curdim + 2]++;
-      int dims = curPairings->dims | (coords ^ otherCoords);
+      int dims = curPairings->dims | newDim;
       addPair(dims, coords, pairings, curdim + 1);
 
       nmatches += mergeMatches(dim, curdim, curp, pairings, cur + 1, curPairings);
