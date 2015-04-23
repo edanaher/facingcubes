@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 typedef struct  {
@@ -106,7 +107,7 @@ void printDistribution(dimpairing *pairings) {
 }
 
 void updateDistributions(dimpairing *pairings) {
-  int i, d;
+  int i, d = 0;
   long long dist = 0, mult = 1;
 
   for(i = 0; i <= global_dim; i++) {
@@ -114,13 +115,24 @@ void updateDistributions(dimpairing *pairings) {
     mult *= (1 << global_dim);
   }
 
-  for(d = 0; d < distribution.len; d++)
+  int min = 0, max = distribution.len;
+  d = (min + max) / 2;
+  while(min < max) {
     if(distribution.all[d][0] == dist)
       break;
-  if(d == distribution.len) {
-    distribution.len++;
+    if(distribution.all[d][0] < dist)
+      min = d + 1;
+    else
+      max = d;
+    d = (min + max) / 2;
+  }
+
+  if(distribution.all[d][0] != dist) {
+    memmove(distribution.all[d+1], distribution.all[d],
+            sizeof(distribution.all[0]) * distribution.len - d + 1);
     distribution.all[d][0] = dist;
     distribution.all[d][1] = 0;
+    distribution.len++;
   }
 
   distribution.all[d][1]++;
