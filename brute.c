@@ -15,11 +15,17 @@ typedef struct {
   pairing *pairings;
 } dimpairing;
 
+typedef struct {
+  int *cur;
+  int len;
+  long long all[10000][2];
+} dist_t;
 
 int fatal(char *msg) {
   printf("Fatal error: %s\n", msg);
   exit(1);
 }
+
 
 int global_dim;
 
@@ -89,38 +95,35 @@ inline int adjacent(int a, int b) {
   return !(diff & (diff - 1));
 }
 
-int distribution[100];
+dist_t distribution;
 
 void printDistribution(int dim, dimpairing *pairings) {
   int i;
   printf("Distribution: ");
   for(i = 0; i <= dim; i++)
-    printf("%d ", distribution[i]);
+    printf("%d ", distribution.cur[i]);
   printf("\n");
 }
-
-int ndistributions = 0;
-long long distributions[10000][2];
 
 void updateDistributions(int dim, dimpairing *pairings) {
   int i, d;
   long long dist = 0, mult = 1;
 
   for(i = 0; i <= dim; i++) {
-    dist += distribution[i] * mult;
+    dist += distribution.cur[i] * mult;
     mult *= (1 << dim);
   }
 
-  for(d = 0; d < ndistributions; d++)
-    if(distributions[d][0] == dist)
+  for(d = 0; d < distribution.len; d++)
+    if(distribution.all[d][0] == dist)
       break;
-  if(d == ndistributions) {
-    ndistributions++;
-    distributions[d][0] = dist;
-    distributions[d][1] = 0;
+  if(d == distribution.len) {
+    distribution.len++;
+    distribution.all[d][0] = dist;
+    distribution.all[d][1] = 0;
   }
 
-  distributions[d][1]++;
+  distribution.all[d][1]++;
 }
 
 void printDistributions(char *filename, int dim) {
@@ -129,14 +132,14 @@ void printDistributions(char *filename, int dim) {
   int *dist = malloc(sizeof(int) * (dim + 1));
   FILE *fout = fopen(filename, "w");
 
-  for(d = 0; d < ndistributions; d++) {
-    t = distributions[d][0];
+  for(d = 0; d < distribution.len; d++) {
+    t = distribution.all[d][0];
     for(i = 0; i <= dim; i++) {
       dist[i] = t % (1 << dim);
       t /= (1 << dim);
     }
 
-    fprintf(fout, "%-12lld ", distributions[d][1]);
+    fprintf(fout, "%-12lld ", distribution.all[d][1]);
     for(i = 0; i <= dim; i++)
       fprintf(fout, " %d", dist[i]);
     fprintf(fout, "\n");
@@ -192,16 +195,16 @@ int mergeMatches(int dim, int curdim, int curp, dimpairing *pairings, int cur, p
       curPairings->matched[cur] = otherCoords;
       curPairings->matched[other] = coords;
 
-      distribution[curdim + 1] -= 2;
-      distribution[curdim + 2]++;
+      distribution.cur[curdim + 1] -= 2;
+      distribution.cur[curdim + 2]++;
       int dims = curPairings->dims | newDim;
       addPair(dims, coords, pairings, curdim + 1);
 
       nmatches += mergeMatches(dim, curdim, curp, pairings, cur + 1, curPairings);
 
       removePair(dims, coords, pairings, curdim + 1);
-      distribution[curdim + 1] += 2;
-      distribution[curdim + 2]--;
+      distribution.cur[curdim + 1] += 2;
+      distribution.cur[curdim + 2]--;
 
       curPairings->matched[cur] = -1;
       curPairings->matched[other] = -1;
@@ -240,13 +243,13 @@ int buildMatches(int dim, int *matching, dimpairing *pairings, int cur) {
     if(other > cur && matching[other] == -1) {
       matching[cur] = other;
       matching[other] = cur;
-      distribution[0] -= 2;
-      distribution[1]++;
+      distribution.cur[0] -= 2;
+      distribution.cur[1]++;
       addPair(b, cur, pairings, 0);
       nmatches += buildMatches(dim, matching, pairings, cur + 1);
       removePair(b, cur, pairings, 0);
-      distribution[1]--;
-      distribution[0] += 2;
+      distribution.cur[1]--;
+      distribution.cur[0] += 2;
       matching[other] = -1;
     }
   }
@@ -296,8 +299,10 @@ int main(int argc, char **argv) {
       pairings[d].pairings[i].matched = malloc(sizeof(int) * maxPairings);
     }
   }
+  distribution.len = 0;
+  distribution.cur = malloc(sizeof(distribution.cur[0]) * dim + 1);
   for(d = 0; d <= dim; d++)
-    distribution[d] = 0;
+    distribution.cur[d] = 0;
 
   // Assume that 0 connects to 1.  This is a trivial symmetry that gives a
   // ~d-fold speedup for d dimensions.
@@ -308,8 +313,8 @@ int main(int argc, char **argv) {
   pairings[0].pairings[0].dims = 1;
   pairings[0].pairings[0].pairs[0] = 0;
   pairings[0].pairings[0].matched[0] = -1;
-  distribution[0] = (1 << dim) - 2;
-  distribution[1] = 1;
+  distribution.cur[0] = (1 << dim) - 2;
+  distribution.cur[1] = 1;
   int matches = buildMatches(dim, matching, pairings, 0);
   printf("Top-level checks: %d\n", matches);
   char filename[100];
