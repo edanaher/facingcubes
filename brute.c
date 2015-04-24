@@ -32,7 +32,17 @@ int fatal(char *msg) {
 #define global_dim DIMENSION
 #else
 int global_dim;
-#endif
+#endif // DIMENSION
+
+#ifdef RANDOMSKIP
+#define IFRANDOM if(random() > (int)(RANDOMSKIP * RAND_MAX))
+#define IFNOTRANDOM if(random() < (int)(RANDOMSKIP * RAND_MAX))
+#define FILEPREFIX "random"
+#else
+#define IFRANDOM if(1)
+#define IFNOTRANDOM if(0)
+#define FILEPREFIX "brute"
+#endif // DIMENSION
 
 void addPair(int dims, int pair, dimpairing *pairings, int d) {
   int p;
@@ -166,7 +176,7 @@ void printDistributions(char *filename, int dim) {
 
 void signalHandler(int sig) {
   char filename[100];
-  sprintf(filename, "results/brute.%d.wip", global_dim);
+  sprintf(filename, "results/%s.%d.wip", FILEPREFIX, global_dim);
   printDistributions(filename, global_dim);
 }
 
@@ -207,6 +217,8 @@ int mergeMatches(int curdim, int curp, dimpairing *pairings, int cur, pairing *c
       // will always merge if possible.
       if(((newDim - 1) & curPairings->dims) != curPairings->dims)
         continue;
+      if(curdim < global_dim / 2)
+        IFNOTRANDOM continue;
 
       curPairings->matched[cur] = otherCoords;
       curPairings->matched[other] = coords;
@@ -228,7 +240,8 @@ int mergeMatches(int curdim, int curp, dimpairing *pairings, int cur, pairing *c
   }
 
   if(!mustMatch)
-    nmatches += mergeMatches(curdim, curp, pairings, cur + 1, curPairings);
+    IFRANDOM
+      nmatches += mergeMatches(curdim, curp, pairings, cur + 1, curPairings);
   return nmatches;
 }
 
@@ -257,6 +270,7 @@ int buildMatches(int *matching, dimpairing *pairings, int cur) {
 
     // If a "right way" match is available, try it.
     if(other > cur && matching[other] == -1) {
+      IFNOTRANDOM continue;
       matching[cur] = other;
       matching[other] = cur;
       distribution.cur[0] -= 2;
@@ -273,7 +287,7 @@ int buildMatches(int *matching, dimpairing *pairings, int cur) {
   matching[cur] = -1;
   // And if we don't have to match it, try leaving it unmatched.
   if(!mustMatch) {
-    nmatches += buildMatches(matching, pairings, cur + 1);
+    IFRANDOM nmatches += buildMatches(matching, pairings, cur + 1);
   }
 
   return nmatches;
@@ -299,7 +313,7 @@ int main(int argc, char **argv) {
   int dim;
   sscanf(argv[1], "%d", &dim);
   global_dim = dim;
-#endif
+#endif // DIMENSION
   signal(SIGUSR2, signalHandler);
   int ncubes = 1 << global_dim;
   int i, d;
@@ -341,10 +355,19 @@ int main(int argc, char **argv) {
   pairings[0].pairings[0].matched[0] = -1;
   distribution.cur[0] = (1 << global_dim) - 2;
   distribution.cur[1] = 1;
+#ifdef RANDOMSKIP
+  int matches = 0;
+  int run;
+  for(run = 0; run < 100; run++) {
+    matches += buildMatches(matching, pairings, 0);
+    printf("Completed run %d: %d total top level checks\n", run, matches);
+  }
+#else
   int matches = buildMatches(matching, pairings, 0);
+#endif // RANDOMSKIP
   printf("Top-level checks: %d\n", matches);
   char filename[100];
-  sprintf(filename, "results/brute.%d.out", global_dim);
+  sprintf(filename, "results/%s.%d.out", FILEPREFIX, global_dim);
   printDistributions(filename, global_dim);
 
   return 0;
