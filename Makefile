@@ -1,17 +1,22 @@
+CC=gcc
+CFLAGS=-Wall
+OPTFLAGS=-O3
+
 brute: brute.c
-	gcc brute.c -obrute -O3 -Wall
+	${CC} brute.c -obrute ${OPTFLAGS} ${CFLAGS}
 
 brute4: brute.c
-	gcc brute.c -obrute4 -O3 -Wall -DDIMENSION=4
+	${CC} brute.c -obrute4 ${OPTFLAGS} ${CFLAGS} -DDIMENSION=4
 
 brute5: brute.c
-	gcc brute.c -obrute5 -O3 -Wall -DDIMENSION=5
+	${CC} brute.c -obrute5 ${OPTFLAGS} ${CFLAGS} -DDIMENSION=5
 
 brute6: brute.c
-	gcc brute.c -obrute5 -O3 -Wall -DDIMENSION=5
-
-debug: brute.c
-	gcc brute.c -obrute -g -Wall
+	${CC} brute.c -obrute5 ${OPTFLAGS} ${CFLAGS} -DDIMENSION=5
 
 profile: brute.c
-	gcc brute.c -obrute -O3 -g -lprofiler
+	${CC} brute.c -obrute ${OPTFLAGS} -g -lprofiler
+
+debug: brute.c
+	${CC} brute.c -obrute -g ${CFLAGS}
+
