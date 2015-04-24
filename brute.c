@@ -28,7 +28,11 @@ int fatal(char *msg) {
 }
 
 
+#ifdef DIMENSION
+#define global_dim DIMENSION
+#else
 int global_dim;
+#endif
 
 void addPair(int dims, int pair, dimpairing *pairings, int d) {
   int p;
@@ -276,18 +280,28 @@ int buildMatches(int *matching, dimpairing *pairings, int cur) {
 }
 
 int main(int argc, char **argv) {
+#ifdef DIMENSION
+  if(argc != 1) {
+    printf("Usage: %s\n", argv[0]);
+    printf("Dimension: %d\n", global_dim);
+    return 1;
+  }
+#else
   if(argc != 2) {
     printf("Usage: %s [dimensions]\n", argv[0]);
     return 1;
   }
+#endif // DIMENSION
 
   printf("pid is %d\n", getpid());
 
+#ifndef DIMENSION
   int dim;
   sscanf(argv[1], "%d", &dim);
   global_dim = dim;
+#endif
   signal(SIGUSR2, signalHandler);
-  int ncubes = 1 << dim;
+  int ncubes = 1 << global_dim;
   int i, d;
 
   // Map of each cube to its match in the top-level matching.
@@ -302,8 +316,8 @@ int main(int argc, char **argv) {
   //          (normalized with shared dimensions set to 0
   // - len: the length of pairs.
   int maxPairings = ncubes;
-  dimpairing *pairings = malloc(sizeof(dimpairing) * dim);
-  for(d = 0; d < dim; d++) {
+  dimpairing *pairings = malloc(sizeof(dimpairing) * global_dim);
+  for(d = 0; d < global_dim; d++) {
     pairings[d].len = 0;
     pairings[d].pairings = malloc(sizeof(pairing *) * maxPairings);
     for(i = 0; i < maxPairings; i++) {
@@ -312,8 +326,8 @@ int main(int argc, char **argv) {
     }
   }
   distribution.len = 0;
-  distribution.cur = malloc(sizeof(distribution.cur[0]) * dim + 1);
-  for(d = 0; d <= dim; d++)
+  distribution.cur = malloc(sizeof(distribution.cur[0]) * global_dim + 1);
+  for(d = 0; d <= global_dim; d++)
     distribution.cur[d] = 0;
 
   // Assume that 0 connects to 1.  This is a trivial symmetry that gives a
@@ -325,13 +339,13 @@ int main(int argc, char **argv) {
   pairings[0].pairings[0].dims = 1;
   pairings[0].pairings[0].pairs[0] = 0;
   pairings[0].pairings[0].matched[0] = -1;
-  distribution.cur[0] = (1 << dim) - 2;
+  distribution.cur[0] = (1 << global_dim) - 2;
   distribution.cur[1] = 1;
   int matches = buildMatches(matching, pairings, 0);
   printf("Top-level checks: %d\n", matches);
   char filename[100];
-  sprintf(filename, "results/brute.%d.out", dim);
-  printDistributions(filename, dim);
+  sprintf(filename, "results/brute.%d.out", global_dim);
+  printDistributions(filename, global_dim);
 
   return 0;
 }
