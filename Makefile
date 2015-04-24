@@ -17,6 +17,9 @@ brute6: brute.c
 profile: brute.c
 	${CC} brute.c -obrute ${OPTFLAGS} -g -lprofiler
 
+profile5: brute.c
+	${CC} brute.c -obrute5 ${OPTFLAGS} -g -lprofiler -DDIMENSION=5
+
 debug: brute.c
 	${CC} brute.c -obrute -g ${CFLAGS}
 
