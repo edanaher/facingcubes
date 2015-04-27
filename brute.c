@@ -342,12 +342,12 @@ int buildMatches(int *matching, dimpairing *pairings, int cur) {
       distribution.cur[1]--;
       distribution.cur[0] += 2;
       matching[other] = -1;
-    }
 #ifdef RANDOMCHOOSE
       chosen++;
       if(chosen >= RANDOMCHOOSE)
         break;
 #endif
+    }
   }
 
   matching[cur] = -1;
