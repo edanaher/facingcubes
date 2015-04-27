@@ -91,6 +91,43 @@ void printPairings(dimpairing *pairings) {
   }
 }
 
+void printPairingsOneline(dimpairing *pairings) {
+  int d, i, j, c;
+  for(d = 0; d < global_dim; d++) {
+    if(pairings[d].len)
+      printf("[%d", d);
+    for(i = 0; i < pairings[d].len; i++) {
+      c = 0;
+      for(j = 0; j < pairings[d].pairings[i].len; j++) {
+        if(pairings[d].pairings[i].matched[j] == -1)
+          c++;
+      }
+      if(c)
+        printf(" %d", c);
+    }
+    if(pairings[d].len)
+      printf("] ");
+  }
+  printf("| ");
+
+  for(d = 0; d < global_dim; d++) {
+    for(i = 0; i < pairings[d].len; i++) {
+      for(j = 0; j < pairings[d].pairings[i].len; j++) {
+        if(pairings[d].pairings[i].matched[j] == -1)
+          break;
+      }
+      if(j == pairings[d].pairings[i].len)
+        continue;
+      printf("[%d %d] ", d, pairings[d].pairings[i].dims);
+      for(j = 0; j < pairings[d].pairings[i].len; j++) {
+        if(pairings[d].pairings[i].matched[j] == -1)
+          printf("%d ", pairings[d].pairings[i].pairs[j]);
+      }
+    }
+  }
+  printf("\n");
+}
+
 void printMatches(int *matching, dimpairing *pairings, int ncubes) {
   int matched = 0;
   int i;
@@ -228,6 +265,7 @@ int mergeMatches(int curdim, int curp, dimpairing *pairings, int cur, pairing *c
       int dims = curPairings->dims | newDim;
       addPair(dims, coords, pairings, curdim + 1);
 
+      //printPairingsOneline(pairings);
       nmatches += mergeMatches(curdim, curp, pairings, cur + 1, curPairings);
 
       removePair(dims, coords, pairings, curdim + 1);
@@ -276,6 +314,7 @@ int buildMatches(int *matching, dimpairing *pairings, int cur) {
       distribution.cur[0] -= 2;
       distribution.cur[1]++;
       addPair(b, cur, pairings, 0);
+      //printPairingsOneline(pairings);
       nmatches += buildMatches(matching, pairings, cur + 1);
       removePair(b, cur, pairings, 0);
       distribution.cur[1]--;
