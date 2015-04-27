@@ -34,15 +34,12 @@ int fatal(char *msg) {
 int global_dim;
 #endif // DIMENSION
 
-#ifdef RANDOMSKIP
-#define IFRANDOM if(random() > (int)(RANDOMSKIP * RAND_MAX))
-#define IFNOTRANDOM if(random() < (int)(RANDOMSKIP * RAND_MAX))
-#define FILEPREFIX "random"
-#else
-#define IFRANDOM if(1)
-#define IFNOTRANDOM if(0)
 #define FILEPREFIX "brute"
-#endif // DIMENSION
+
+#ifdef RANDOMCHOOSE
+#undef FILEPREFIX
+#define FILEPREFIX "random"
+#endif
 
 void addPair(int dims, int pair, dimpairing *pairings, int d) {
   int p;
@@ -243,7 +240,13 @@ int mergeMatches(int curdim, int curp, dimpairing *pairings, int cur, pairing *c
       mustMatch = 1;
 
   int nmatches = 0;
+#ifdef RANDOMCHOOSE
+  int chosen = 0;
+  int startPoint = cur + 1 + (random() % (curPairings->len - cur + 1));
+  for(other = startPoint; other < curPairings->len; other++) {
+#else
   for(other = cur + 1; other < curPairings->len; other++) {
+#endif
     int otherCoords = curPairings->pairs[other];
     if(adjacent(otherCoords, coords) && curPairings->matched[other] == -1) {
       int newDim = coords ^ otherCoords;
@@ -254,8 +257,6 @@ int mergeMatches(int curdim, int curp, dimpairing *pairings, int cur, pairing *c
       // will always merge if possible.
       if(((newDim - 1) & curPairings->dims) != curPairings->dims)
         continue;
-      if(curdim < global_dim / 2)
-        IFNOTRANDOM continue;
 
       curPairings->matched[cur] = otherCoords;
       curPairings->matched[other] = coords;
@@ -274,12 +275,17 @@ int mergeMatches(int curdim, int curp, dimpairing *pairings, int cur, pairing *c
 
       curPairings->matched[cur] = -1;
       curPairings->matched[other] = -1;
+
+#ifdef RANDOMCHOOSE
+      chosen++;
+      if(chosen >= RANDOMCHOOSE)
+        break;
+#endif
     }
   }
 
   if(!mustMatch)
-    IFRANDOM
-      nmatches += mergeMatches(curdim, curp, pairings, cur + 1, curPairings);
+    nmatches += mergeMatches(curdim, curp, pairings, cur + 1, curPairings);
   return nmatches;
 }
 
@@ -299,16 +305,32 @@ int buildMatches(int *matching, dimpairing *pairings, int cur) {
   // So if there's a potential lower match, we *must* match this one to a
   // higher one in order for the matching to be maximal.
   int mustMatch = 0;
+#ifdef RANDOMCHOOSE
+  int chosen = 0;
+  // If a "wrong way" match is available, this cube must be matched.
+  for(b = 1; b < ncubes; b <<= 1)
+    if((cur ^ b) < cur && matching[cur ^ b] == -1)
+      mustMatch = 1;
+
+#endif
+
+#ifdef RANDOMCHOOSE
+  int startPoint = 1 << (random() % global_dim);
+  for(b = startPoint; b < ncubes; b <<= 1) {
+#else
   for(b = 1; b < ncubes; b <<= 1) {
+#endif
+
     other = cur ^ b;
 
+#ifndef RANDOMCHOOSE
     // If a "wrong way" match is available, this cube must be matched.
     if(other < cur && matching[other] == -1)
       mustMatch = 1;
+#endif
 
     // If a "right way" match is available, try it.
     if(other > cur && matching[other] == -1) {
-      IFNOTRANDOM continue;
       matching[cur] = other;
       matching[other] = cur;
       distribution.cur[0] -= 2;
@@ -321,12 +343,17 @@ int buildMatches(int *matching, dimpairing *pairings, int cur) {
       distribution.cur[0] += 2;
       matching[other] = -1;
     }
+#ifdef RANDOMCHOOSE
+      chosen++;
+      if(chosen >= RANDOMCHOOSE)
+        break;
+#endif
   }
 
   matching[cur] = -1;
   // And if we don't have to match it, try leaving it unmatched.
   if(!mustMatch) {
-    IFRANDOM nmatches += buildMatches(matching, pairings, cur + 1);
+    nmatches += buildMatches(matching, pairings, cur + 1);
   }
 
   return nmatches;
@@ -394,10 +421,10 @@ int main(int argc, char **argv) {
   pairings[0].pairings[0].matched[0] = -1;
   distribution.cur[0] = (1 << global_dim) - 2;
   distribution.cur[1] = 1;
-#ifdef RANDOMSKIP
+#ifdef RANDOMCHOOSE
   int matches = 0;
   int run;
-  for(run = 0; run < 100; run++) {
+  for(run = 0; run < 1000; run++) {
     matches += buildMatches(matching, pairings, 0);
     printf("Completed run %d: %d total top level checks\n", run, matches);
   }

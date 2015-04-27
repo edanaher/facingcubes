@@ -14,8 +14,11 @@ brute5: brute.c
 brute6: brute.c
 	${CC} brute.c -obrute5 ${OPTFLAGS} -DDIMENSION=5
 
+random5: brute.c
+	${CC} brute.c -orandom5 ${OPTFLAGS} -DDIMENSION=5 -DRANDOMCHOOSE=3
+
 random6: brute.c
-	${CC} brute.c -orandom6 ${OPTFLAGS} -DDIMENSION=6 -DRANDOMSKIP=0.3
+	${CC} brute.c -orandom6 ${OPTFLAGS} -DDIMENSION=6 -DRANDOMCHOOSE=2
 
 profile: brute.c
 	${CC} brute.c -obrute ${OPTFLAGS} -g -lprofiler
