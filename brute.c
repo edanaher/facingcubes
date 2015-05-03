@@ -31,9 +31,14 @@ int fatal(char *msg) {
 
 #ifdef DIMENSION
 #define global_dim DIMENSION
+#define MAXDIMENSION DIMENSION
 #else
 int global_dim;
+#define MAXDIMENSION 6
 #endif // DIMENSION
+
+int npermutations;
+int permutations[720][MAXDIMENSION];
 
 #define FILEPREFIX "brute"
 
@@ -227,6 +232,79 @@ void signalHandler(int sig) {
   printDistributions(filename, global_dim);
 }
 
+
+void initPermutations() {
+  int d, i, b;
+  int nsofar = 1;
+  for(i = 0; i < global_dim; i++)
+    permutations[0][i] = i;
+  for(d = 1; d < global_dim; d++) {
+    for(b = 0; b < d; b++)
+      for(i = 0; i < nsofar; i++) {
+        int cur = i + (b + 1) * nsofar;
+        memcpy(permutations[cur], permutations[i], sizeof(permutations[0]));
+        permutations[cur][d] = permutations[i][b];
+        permutations[cur][b] = d;
+      }
+    nsofar *= (d + 1);
+  }
+  npermutations = nsofar;
+  for(d = 0; d < npermutations; d++) {
+    for(i = 0; i < global_dim; i++)
+      printf("%d ", permutations[d][i]);
+    printf("\n");
+  }
+}
+
+// Rotations are:
+// - permute coordinates (d!)
+// - negate a subset of coordinates (2^d)
+// TODO(edanaher): So slow.  There must be a faster way to permute...
+void printAllRotations(dimpairing *pairings) {
+  int flip_dims, flipper, perm;
+  int i, j, d, b;
+  dimpairing *rotated = malloc(sizeof(dimpairing) * global_dim);
+
+  for(d = 0; d < global_dim; d++) {
+    rotated[d].len = pairings[d].len;
+    rotated[d].pairings = malloc(sizeof(pairing) * pairings[d].len);
+    for(i = 0; i < pairings[d].len; i++) {
+      rotated[d].pairings[i].len = pairings[d].pairings[i].len;
+      rotated[d].pairings[i].pairs = malloc(sizeof(int) * pairings[d].pairings[i].len);
+      rotated[d].pairings[i].matched = malloc(sizeof(int) * pairings[d].pairings[i].len);
+      for(j = 0; j < pairings[d].pairings[i].len; j++)
+        rotated[d].pairings[i].matched[j] = pairings[d].pairings[i].matched[j];
+    }
+  }
+
+  for(perm = 0; perm < npermutations; perm++)
+    for(flip_dims = 0; flip_dims < (1 << global_dim); flip_dims++) {
+      for(d = 0; d < global_dim; d++) {
+        for(i = 0; i < pairings[d].len; i++) {
+          rotated[d].pairings[i].dims = 0;
+          for(b = 0; b < global_dim; b++) {
+            int bit = (pairings[d].pairings[i].dims & (1 << b)) >> b;
+            rotated[d].pairings[i].dims |= bit << (permutations[perm][b]);
+          }
+
+          flipper = flip_dims & ~rotated[d].pairings[i].dims;
+          for(j = 0; j < pairings[d].pairings[i].len; j++) {
+            rotated[d].pairings[i].pairs[j] = 0;
+            for(b = 0; b < global_dim; b++) {
+              int bit = (pairings[d].pairings[i].pairs[j] & (1 << b)) >> b;
+              rotated[d].pairings[i].pairs[j] |= bit << (permutations[perm][b]);
+            }
+            rotated[d].pairings[i].pairs[j] ^= flipper;
+          }
+        }
+      }
+      printPairingsOneline(rotated);
+    }
+    printf("\n");
+
+  free(rotated);
+}
+
 int mergeMatches(int curdim, int curp, dimpairing *pairings, int cur, pairing *curPairings) {
   //pairing curPairings = pairings[curdim].pairings[curp];
   for(; cur < curPairings->len && curPairings->matched[cur] != -1; cur++);
@@ -325,6 +403,8 @@ int buildMatches(int *matching, dimpairing *pairings, int cur) {
   for(; cur < ncubes && matching[cur] != -1; cur++);
   if(cur == ncubes) { // No more unmatched cubes
     //printPairingsOneline(pairings);
+    //printMatches(matching, pairings, ncubes);
+    printAllRotations(pairings);
     mergeMatches(0, 0, pairings, 0, pairings[0].pairings);
     return 1;
   }
@@ -424,6 +504,8 @@ int main(int argc, char **argv) {
   int *matching = malloc(sizeof(int) * ncubes);
   for(i = 0; i < ncubes; i++)
     matching[i] = -1;
+
+  initPermutations();
 
   // pairings[d][p] is the list of all pairings with d+1 shared dimensions that
   // share pairings[d][p].dims: - dims: a // bitmask with 1s on the shared
