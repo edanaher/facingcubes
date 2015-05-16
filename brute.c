@@ -61,6 +61,12 @@ int permutations[720][MAXDIMENSION];
 #define CACHEDEPTH 5
 #endif
 
+#ifdef COUNTINGDEPTH
+long long counts[COUNTINGDEPTH];
+#endif
+int global_curdepth = 0;
+
+
 /* The cache for pairings already computed.  Each element is approximately:
 struct pairingcacheentry {
   char ndims;
@@ -413,6 +419,17 @@ void signalHandler(int sig) {
   printDistributions(filename, global_dim);
 }
 
+void printStatus() {
+  long long now = runningTime();
+  char filename[100];
+  sprintf(filename, "results/%s.%d.wip", FILEPREFIX, global_dim);
+  printDistributions(filename, global_dim);
+#ifdef DISPLAYDEPTH
+  printf("%lld.%03lld %lld\n[1A", now / 1000000, now / 1000% 1000, counts[DISPLAYDEPTH]);
+  if(counts[DISPLAYDEPTH] % 10 == 0)
+    printf("\n");
+#endif
+}
 
 void initPermutations() {
   int d, i, b;
@@ -561,11 +578,6 @@ int mergeMatches(int curdim, int curp, dimpairing *pairings, int cur, pairing *c
   return nmatches;
 }
 
-#ifdef COUNTINGDEPTH
-long long counts[COUNTINGDEPTH];
-#endif
-int global_curdepth = 0;
-
 int buildMatches(int *matching, dimpairing *pairings, int cur, int ignoreCache) {
   int ncubes = 1 << global_dim;
   int b, other;
@@ -576,8 +588,13 @@ int buildMatches(int *matching, dimpairing *pairings, int cur, int ignoreCache) 
     //printf("%lld.%06lld %*s %d\n", runningTime() / 1000000LL, runningTime() % 1000000LL, global_curdepth, "", global_curdepth);
     //printPairingsOneline(pairings);
     counts[global_curdepth]++;
-  } else
+    if(global_curdepth == DISPLAYDEPTH)
+      printStatus();
+  }
+#ifdef ONLYCOUNTDEPTH
+  else
     return 1;
+#endif
 #endif
 
   if(!ignoreCache && global_curdepth < CACHEDEPTH) {
