@@ -2,6 +2,11 @@ CC=gcc
 CFLAGS=-Wall
 OPTFLAGS=-O3 ${CFLAGS}
 
+# Compile flags:
+# - DIMENSION: hardcode dimension instead of using ARGV[0]
+# - RANDOMCHOOSE: at each step, choose this many options instead of trying all
+# - COUNTINGDEPTH: count how many times each depth is hit, up to this depth.
+
 brute: brute.c
 	${CC} brute.c -obrute ${OPTFLAGS}
 
@@ -12,7 +17,7 @@ brute5: brute.c
 	${CC} brute.c -obrute5 ${OPTFLAGS} -DDIMENSION=5
 
 brute6: brute.c
-	${CC} brute.c -obrute5 ${OPTFLAGS} -DDIMENSION=5
+	${CC} brute.c -obrute6 ${OPTFLAGS} -DDIMENSION=6
 
 random5: brute.c
 	${CC} brute.c -orandom5 ${OPTFLAGS} -DDIMENSION=5 -DRANDOMCHOOSE=3
