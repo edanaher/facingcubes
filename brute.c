@@ -52,6 +52,11 @@ int permutations[720][MAXDIMENSION];
 #define CACHESIZE (1LL<<30)
 #endif
 
+#ifndef CACHEMAPSIZE
+// The five-millionth prime; will use just under 700MB of RAM.
+#define CACHEMAPSIZE 86028121
+#endif
+
 #ifndef CACHEDEPTH
 #define CACHEDEPTH 5
 #endif
@@ -66,12 +71,14 @@ struct pairingcacheentry {
   } dim[]
 }
 */
-int cachetail;
+long long cachetail;
 unsigned char *pairingcache;
+unsigned long long *cachemap;
 
 void initCache() {
-  cachetail = 0;
+  cachetail = 1; // leave zero empty so zero means not in cache.
   pairingcache = malloc(CACHESIZE);
+  cachemap = calloc(CACHEMAPSIZE, sizeof(cachemap[0]));
   if(!pairingcache) {
     printf("Failure to allocate cache of size %lld\n", CACHESIZE);
     exit(1);
@@ -80,8 +87,36 @@ void initCache() {
 
 void printPairingsOneline(dimpairing *pairings);
 
+// Writing a good hash function is hard, particularly when you can't depend on order.
+// This one has no conflicts for 5 or the 6 benchmark I tried; looks good.
+unsigned int hash(dimpairing *pairings) {
+  int d, i;
+  //printf("======\n");
+  unsigned int h = ((pairings->len + 1) * 1299721) % CACHEMAPSIZE;
+  for(d = 0; d < pairings->len; d++) {
+    int hs = 0;
+    int hm = 1;
+    for(i = 0; i < pairings->pairings[d].len; i++) {
+      hs += pairings->pairings[d].pairs[i] + 97;
+      hm *= (pairings->pairings[d].pairs[i] + 3);
+    }
+    hs *= (pairings->pairings[d].dims + 3) * pairings->pairings[d].dims * pairings->pairings[d].len;
+    h = (h + hs * 97 + hm * 17) % CACHEMAPSIZE;
+  }
+  //printf("h: %d\n", h);
+  return h;
+}
+
+int cacheload = 0;
 void addToCache(dimpairing *pairings) {
   int d, i;
+  int h = hash(pairings);
+  cacheload++;
+  if(cachemap[h]) {
+    printf("Cache conflict %d (load: %d)! ", h, cacheload);
+    printPairingsOneline(pairings);
+  }
+  cachemap[h] = cachetail;
   pairingcache[cachetail++] = pairings->len;
   for(d = 0; d < pairings->len; d++) {
     pairingcache[cachetail++] = pairings->pairings[d].dims;
@@ -89,7 +124,7 @@ void addToCache(dimpairing *pairings) {
     for(i = 0; i < pairings->pairings[d].len; i++)
       pairingcache[cachetail++] = pairings->pairings[d].pairs[i];
   }
-  //printf("Added to cache (%d): ", cachetail);
+  //printf("Added to cache   (%u -> %d): ", h, cachetail);
   //printPairingsOneline(pairings);
 }
 
@@ -129,14 +164,13 @@ int nextCacheElem(int e) {
 }
 
 int checkCacheRotation(dimpairing *pairings) {
-  int e = 0;
+  int e = cachemap[hash(pairings)];
+  if(!e)
+    return 0;
   //printf("Checking cache for", e);
   //printPairingsOneline(pairings);
-  for(e = 0; e < cachetail; e = nextCacheElem(e)) {
-    if(checkCacheElement(pairings, e))
-      return 1;
-  }
-  return 0;
+
+  return checkCacheElement(pairings, e);
 }
 
 int checkCache(dimpairing *pairings) {
@@ -695,6 +729,8 @@ int main(int argc, char **argv) {
   int matches = buildMatches(matching, pairings, 0, 0);
 #endif // RANDOMSKIP
   printf("Top-level checks: %d\n", matches);
+  printf("Cache hash load: %d/%d\n", cacheload, CACHEMAPSIZE);
+  printf("Cache space used: %d/%lld\n", cachetail, CACHESIZE);
   char filename[100];
   sprintf(filename, "results/%s.%d.out", FILEPREFIX, global_dim);
   printDistributions(filename, global_dim);
