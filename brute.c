@@ -2,6 +2,7 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 typedef struct  {
@@ -40,6 +41,18 @@ int global_dim;
 #undef FILEPREFIX
 #define FILEPREFIX "random"
 #endif
+
+long long global_start_time;
+long long currentTime() {
+  struct timeval now;
+  gettimeofday(&now, NULL);
+
+  return (long long)(now.tv_sec) * 1000000 + now.tv_usec;
+}
+
+long long runningTime() {
+  return currentTime() - global_start_time;
+}
 
 void addPair(int dims, int pair, dimpairing *pairings, int d) {
   int p;
@@ -289,14 +302,29 @@ int mergeMatches(int curdim, int curp, dimpairing *pairings, int cur, pairing *c
   return nmatches;
 }
 
+#ifdef COUNTINGDEPTH
+long long counts[COUNTINGDEPTH];
+int global_curdepth = 1;
+#endif
+
 int buildMatches(int *matching, dimpairing *pairings, int cur) {
   int ncubes = 1 << global_dim;
   int b, other;
   int nmatches = 0;
 
+#ifdef COUNTINGDEPTH
+  if(global_curdepth < COUNTINGDEPTH) {
+    //printf("%lld.%06lld %*s %d\n", runningTime() / 1000000LL, runningTime() % 1000000LL, global_curdepth, "", global_curdepth);
+    //printPairingsOneline(pairings);
+    counts[global_curdepth]++;
+  } else
+    return 1;
+#endif
+
+
   for(; cur < ncubes && matching[cur] != -1; cur++);
   if(cur == ncubes) { // No more unmatched cubes
-    //printMatches(matching, pairings, ncubes);
+    //printPairingsOneline(pairings);
     mergeMatches(0, 0, pairings, 0, pairings[0].pairings);
     return 1;
   }
@@ -337,7 +365,13 @@ int buildMatches(int *matching, dimpairing *pairings, int cur) {
       distribution.cur[1]++;
       addPair(b, cur, pairings, 0);
       //printPairingsOneline(pairings);
+#ifdef COUNTINGDEPTH
+      global_curdepth++;
+#endif
       nmatches += buildMatches(matching, pairings, cur + 1);
+#ifdef COUNTINGDEPTH
+      global_curdepth--;
+#endif
       removePair(b, cur, pairings, 0);
       distribution.cur[1]--;
       distribution.cur[0] += 2;
@@ -383,6 +417,8 @@ int main(int argc, char **argv) {
   signal(SIGUSR2, signalHandler);
   int ncubes = 1 << global_dim;
   int i, d;
+
+  global_start_time = currentTime();
 
   // Map of each cube to its match in the top-level matching.
   int *matching = malloc(sizeof(int) * ncubes);
@@ -435,6 +471,11 @@ int main(int argc, char **argv) {
   char filename[100];
   sprintf(filename, "results/%s.%d.out", FILEPREFIX, global_dim);
   printDistributions(filename, global_dim);
+
+#ifdef COUNTINGDEPTH
+  for(i = 0; i < COUNTINGDEPTH; i++)
+    printf("%d %lld\n", i, counts[i]);
+#endif
 
   return 0;
 }
