@@ -35,3 +35,5 @@ profile5: brute.c
 debug: brute.c
 	${CC} brute.c -obrute -g ${CFLAGS}
 
+benchmark: brute.c
+	${CC} brute.c -obrute6 ${OPTFLAGS} -g -lprofiler -DDIMENSION=6 -DCOUNTINGDEPTH=14 -DCACHEDEPTH=6
