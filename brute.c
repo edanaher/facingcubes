@@ -47,6 +47,146 @@ int permutations[720][MAXDIMENSION];
 #define FILEPREFIX "random"
 #endif
 
+
+#ifndef CACHESIZE
+#define CACHESIZE (1LL<<30)
+#endif
+
+#ifndef CACHEDEPTH
+#define CACHEDEPTH 5
+#endif
+
+/* The cache for pairings already computed.  Each element is approximately:
+struct pairingcacheentry {
+  char ndims;
+  struct {
+    char dims;
+    char len;
+    char pairs[];
+  } dim[]
+}
+*/
+int cachetail;
+unsigned char *pairingcache;
+
+void initCache() {
+  cachetail = 0;
+  pairingcache = malloc(CACHESIZE);
+  if(!pairingcache) {
+    printf("Failure to allocate cache of size %lld\n", CACHESIZE);
+    exit(1);
+  }
+}
+
+void printPairingsOneline(dimpairing *pairings);
+
+void addToCache(dimpairing *pairings) {
+  int d, i;
+  pairingcache[cachetail++] = pairings->len;
+  for(d = 0; d < pairings->len; d++) {
+    pairingcache[cachetail++] = pairings->pairings[d].dims;
+    pairingcache[cachetail++] = pairings->pairings[d].len;
+    for(i = 0; i < pairings->pairings[d].len; i++)
+      pairingcache[cachetail++] = pairings->pairings[d].pairs[i];
+  }
+  //printf("Added to cache (%d): ", cachetail);
+  //printPairingsOneline(pairings);
+}
+
+int checkCacheElement(dimpairing *pairings, int e) {
+  int d, i, dc, ic;
+  int ndims = pairingcache[e++];
+  if(ndims != pairings->len)  // Check that they have the same number of dimensions paired
+    return 0;
+  for(d = 0; d < ndims; d++) {
+    for(dc = 0; dc < ndims; dc++) // Find the matching dimension
+      if(pairings->pairings[dc].dims == pairingcache[e])
+        break;
+    if(dc == pairings->len)
+      return 0;
+    e++;
+    int npairs = pairingcache[e++];
+    if(pairings->pairings[dc].len != npairs) // Check the same number of pairs in this dimension
+      return 0;
+    // And finally, check that the same values are matched.
+    for(i = 0; i < npairs; i++, e++) {
+      for(ic = 0; ic < npairs; ic++)
+        if(pairingcache[e] == pairings->pairings[d].pairs[ic])
+          break;
+      if(ic == npairs)
+        return 0;
+    }
+  }
+  return 1;
+}
+
+int nextCacheElem(int e) {
+  int d;
+  int ndims = pairingcache[e++];
+  for(d = 0; d < ndims; d++)
+    e += 2 + pairingcache[e + 1];
+  return e;
+}
+
+int checkCacheRotation(dimpairing *pairings) {
+  int e = 0;
+  //printf("Checking cache for", e);
+  //printPairingsOneline(pairings);
+  for(e = 0; e < cachetail; e = nextCacheElem(e)) {
+    if(checkCacheElement(pairings, e))
+      return 1;
+  }
+  return 0;
+}
+
+int checkCache(dimpairing *pairings) {
+  int flip_dims, flipper, perm;
+  int i, j, d, b;
+  dimpairing *rotated = malloc(sizeof(dimpairing) * global_dim);
+
+  for(d = 0; d < global_dim; d++) {
+    rotated[d].len = pairings[d].len;
+    rotated[d].pairings = malloc(sizeof(pairing) * pairings[d].len);
+    for(i = 0; i < pairings[d].len; i++) {
+      rotated[d].pairings[i].len = pairings[d].pairings[i].len;
+      rotated[d].pairings[i].pairs = malloc(sizeof(int) * pairings[d].pairings[i].len);
+      rotated[d].pairings[i].matched = malloc(sizeof(int) * pairings[d].pairings[i].len);
+      for(j = 0; j < pairings[d].pairings[i].len; j++)
+        rotated[d].pairings[i].matched[j] = pairings[d].pairings[i].matched[j];
+    }
+  }
+
+  for(perm = 0; perm < npermutations; perm++)
+    for(flip_dims = 0; flip_dims < (1 << global_dim); flip_dims++) {
+      for(d = 0; d < global_dim; d++) {
+        for(i = 0; i < pairings[d].len; i++) {
+          rotated[d].pairings[i].dims = 0;
+          for(b = 0; b < global_dim; b++) {
+            int bit = (pairings[d].pairings[i].dims & (1 << b)) >> b;
+            rotated[d].pairings[i].dims |= bit << (permutations[perm][b]);
+          }
+
+          flipper = flip_dims & ~rotated[d].pairings[i].dims;
+          for(j = 0; j < pairings[d].pairings[i].len; j++) {
+            rotated[d].pairings[i].pairs[j] = 0;
+            for(b = 0; b < global_dim; b++) {
+              int bit = (pairings[d].pairings[i].pairs[j] & (1 << b)) >> b;
+              rotated[d].pairings[i].pairs[j] |= bit << (permutations[perm][b]);
+            }
+            rotated[d].pairings[i].pairs[j] ^= flipper;
+          }
+        }
+      }
+      if(checkCacheRotation(rotated)) {
+        free(rotated);
+        return 1;
+      }
+    }
+
+  free(rotated);
+  return 0;
+}
+
 long long global_start_time;
 long long currentTime() {
   struct timeval now;
@@ -249,11 +389,11 @@ void initPermutations() {
     nsofar *= (d + 1);
   }
   npermutations = nsofar;
-  for(d = 0; d < npermutations; d++) {
+/*  for(d = 0; d < npermutations; d++) {
     for(i = 0; i < global_dim; i++)
       printf("%d ", permutations[d][i]);
     printf("\n");
-  }
+  }*/
 }
 
 // Rotations are:
@@ -382,10 +522,10 @@ int mergeMatches(int curdim, int curp, dimpairing *pairings, int cur, pairing *c
 
 #ifdef COUNTINGDEPTH
 long long counts[COUNTINGDEPTH];
-int global_curdepth = 1;
 #endif
+int global_curdepth = 0;
 
-int buildMatches(int *matching, dimpairing *pairings, int cur) {
+int buildMatches(int *matching, dimpairing *pairings, int cur, int ignoreCache) {
   int ncubes = 1 << global_dim;
   int b, other;
   int nmatches = 0;
@@ -399,12 +539,20 @@ int buildMatches(int *matching, dimpairing *pairings, int cur) {
     return 1;
 #endif
 
+  if(!ignoreCache && global_curdepth < CACHEDEPTH) {
+    if(checkCache(pairings)) {
+      //printf("Found in cache: ");
+      //printPairingsOneline(pairings);
+      return 0;
+    }
+    addToCache(pairings);
+  }
 
   for(; cur < ncubes && matching[cur] != -1; cur++);
   if(cur == ncubes) { // No more unmatched cubes
     //printPairingsOneline(pairings);
     //printMatches(matching, pairings, ncubes);
-    printAllRotations(pairings);
+    //printAllRotations(pairings);
     mergeMatches(0, 0, pairings, 0, pairings[0].pairings);
     return 1;
   }
@@ -445,13 +593,9 @@ int buildMatches(int *matching, dimpairing *pairings, int cur) {
       distribution.cur[1]++;
       addPair(b, cur, pairings, 0);
       //printPairingsOneline(pairings);
-#ifdef COUNTINGDEPTH
       global_curdepth++;
-#endif
-      nmatches += buildMatches(matching, pairings, cur + 1);
-#ifdef COUNTINGDEPTH
+      nmatches += buildMatches(matching, pairings, cur + 1, 0);
       global_curdepth--;
-#endif
       removePair(b, cur, pairings, 0);
       distribution.cur[1]--;
       distribution.cur[0] += 2;
@@ -467,7 +611,7 @@ int buildMatches(int *matching, dimpairing *pairings, int cur) {
   matching[cur] = -1;
   // And if we don't have to match it, try leaving it unmatched.
   if(!mustMatch) {
-    nmatches += buildMatches(matching, pairings, cur + 1);
+    nmatches += buildMatches(matching, pairings, cur + 1, 1);
   }
 
   return nmatches;
@@ -499,6 +643,7 @@ int main(int argc, char **argv) {
   int i, d;
 
   global_start_time = currentTime();
+  initCache();
 
   // Map of each cube to its match in the top-level matching.
   int *matching = malloc(sizeof(int) * ncubes);
@@ -543,11 +688,11 @@ int main(int argc, char **argv) {
   int matches = 0;
   int run;
   for(run = 0; run < 1000; run++) {
-    matches += buildMatches(matching, pairings, 0);
+    matches += buildMatches(matching, pairings, 0, 0);
     printf("Completed run %d: %d total top level checks\n", run, matches);
   }
 #else
-  int matches = buildMatches(matching, pairings, 0);
+  int matches = buildMatches(matching, pairings, 0, 0);
 #endif // RANDOMSKIP
   printf("Top-level checks: %d\n", matches);
   char filename[100];

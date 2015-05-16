@@ -6,6 +6,7 @@ OPTFLAGS=-O3 ${CFLAGS}
 # - DIMENSION: hardcode dimension instead of using ARGV[0]
 # - RANDOMCHOOSE: at each step, choose this many options instead of trying all
 # - COUNTINGDEPTH: count how many times each depth is hit, up to this depth.
+# - CACHEDEPTH: how deep to cache.
 
 brute: brute.c
 	${CC} brute.c -obrute ${OPTFLAGS}
