@@ -78,7 +78,7 @@ unsigned long long *cachemap;
 void initCache() {
   cachetail = 1; // leave zero empty so zero means not in cache.
   pairingcache = malloc(CACHESIZE);
-  cachemap = calloc(CACHEMAPSIZE, sizeof(cachemap[0]));
+  cachemap = calloc(CACHEMAPSIZE, sizeof(unsigned long long));
   if(!pairingcache) {
     printf("Failure to allocate cache of size %lld\n", CACHESIZE);
     exit(1);
@@ -98,7 +98,7 @@ unsigned int hash(dimpairing *pairings) {
     int hm = 1;
     for(i = 0; i < pairings->pairings[d].len; i++) {
       hs += pairings->pairings[d].pairs[i] + 97;
-      hm *= (pairings->pairings[d].pairs[i] + 3);
+      hm *= (pairings->pairings[d].pairs[i] + 47);
     }
     hs *= (pairings->pairings[d].dims + 3) * pairings->pairings[d].dims * pairings->pairings[d].len;
     h = (h + hs * 97 + hm * 17) % CACHEMAPSIZE;
@@ -110,11 +110,12 @@ unsigned int hash(dimpairing *pairings) {
 int cacheload = 0;
 void addToCache(dimpairing *pairings) {
   int d, i;
-  int h = hash(pairings);
+  unsigned int h = hash(pairings);
   cacheload++;
-  if(cachemap[h]) {
+  while(cachemap[h]) {
     printf("Cache conflict %d (load: %d)! ", h, cacheload);
     printPairingsOneline(pairings);
+    h++;
   }
   cachemap[h] = cachetail;
   pairingcache[cachetail++] = pairings->len;
@@ -124,7 +125,7 @@ void addToCache(dimpairing *pairings) {
     for(i = 0; i < pairings->pairings[d].len; i++)
       pairingcache[cachetail++] = pairings->pairings[d].pairs[i];
   }
-  //printf("Added to cache   (%u -> %d): ", h, cachetail);
+  //printf("Added to cache   (%u @ %lld -> %lld): ", h, cachemap[h], cachetail);
   //printPairingsOneline(pairings);
 }
 
@@ -164,13 +165,19 @@ int nextCacheElem(int e) {
 }
 
 int checkCacheRotation(dimpairing *pairings) {
-  int e = cachemap[hash(pairings)];
-  if(!e)
-    return 0;
+  unsigned int h = hash(pairings);
+  int e = cachemap[h];
+  while(e) {
+    if(checkCacheElement(pairings, e))
+      return 1;
+    //printf("False cache hit on %u -> %d: ", h, e);
+    //printPairingsOneline(pairings);
+    h++;
+    e = cachemap[h];
+  }
   //printf("Checking cache for", e);
   //printPairingsOneline(pairings);
-
-  return checkCacheElement(pairings, e);
+  return 0;
 }
 
 int checkCache(dimpairing *pairings) {
@@ -730,7 +737,7 @@ int main(int argc, char **argv) {
 #endif // RANDOMSKIP
   printf("Top-level checks: %d\n", matches);
   printf("Cache hash load: %d/%d\n", cacheload, CACHEMAPSIZE);
-  printf("Cache space used: %d/%lld\n", cachetail, CACHESIZE);
+  printf("Cache space used: %lld/%lld\n", cachetail, CACHESIZE);
   char filename[100];
   sprintf(filename, "results/%s.%d.out", FILEPREFIX, global_dim);
   printDistributions(filename, global_dim);
