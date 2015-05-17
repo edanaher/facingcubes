@@ -2,6 +2,9 @@ CC=gcc
 CFLAGS=-Wall
 OPTFLAGS=-O3 ${CFLAGS}
 
+layout: layout.c
+	${CC} layout.c -olayout ${OPTFLAGS}
+
 # Compile flags:
 # - DIMENSION: hardcode dimension instead of using ARGV[0]
 # - RANDOMCHOOSE: at each step, choose this many options instead of trying all
