@@ -5,6 +5,12 @@ OPTFLAGS=-O3 ${CFLAGS}
 layout: layout.c
 	${CC} layout.c -olayout ${OPTFLAGS}
 
+layout5: layout.c
+	${CC} layout.c -olayout5 ${OPTFLAGS} -DDIMENSION=5
+
+layout6: layout.c
+	${CC} layout.c -olayout6 ${OPTFLAGS} -DDIMENSION=6
+
 # Compile flags:
 # - DIMENSION: hardcode dimension instead of using ARGV[0]
 # - RANDOMCHOOSE: at each step, choose this many options instead of trying all

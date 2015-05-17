@@ -2,9 +2,16 @@
 #include <unistd.h>
 #include <sys/time.h>
 
-#define MAXDIMENSION 8
-
+#ifdef DIMENSION
+#define global_dim DIMENSION
+#define ncells (1 << DIMENSION)
+#define MAXDIMENSION DIMENSION
+#else
 int global_dim;
+int ncells;
+#define MAXDIMENSION 8
+#endif // DIMENSION
+
 int histogram[MAXDIMENSION + 1];
 
 // store dimensions by which histogram index they belong in.
@@ -29,14 +36,14 @@ long long runningTime() {
 
 void arrangeDims() {
   int i, j, b;
-  for(i = 0; i < (1 << global_dim); i++) {
+  for(i = 0; i < ncells; i++) {
     int ones = 0;
     for(b = 0; b <= global_dim; b++)
       if(i & (1 << b))
         ones++;
     dims[ones][++dims[ones][0]] = i;
     int n = 0;
-    for(j = 1; j < (1 << global_dim); j++)
+    for(j = 1; j < ncells; j++)
       if(!(j & ~i))
         dimoffsets[i][n++] = j;
     //printf("%d => %d\n", i, ones);
@@ -48,7 +55,7 @@ void arrangeDims() {
       printf(" %d", dims[i][j]);
     printf("\n");
   }*/
-  /*for(i = 0; i < (1 << global_dim); i++) {
+  /*for(i = 0; i < ncells; i++) {
     printf("%d:", i);
     int j;
     for(j = 0; dimoffsets[i][j]; j++)
@@ -66,7 +73,7 @@ int cellBlocked[1 << MAXDIMENSION][1 << MAXDIMENSION];
 // This is a bit slow, but it avoids bookkeeping when building, which is far more important.
 void printLayout() {
   int i;
-  for(i = 0; i < (1 << global_dim); i++)
+  for(i = 0; i < ncells; i++)
     if(!(i & cellUsed[i]))
       printf("[%d %d] ", i, cellUsed[i]);
   printf("\n");
@@ -82,7 +89,7 @@ void placeCube(int c, int dim) {
     cellUsed[c + dimoffsets[dim][i]] = dim;
 
   // And its adjacent cubes in this dimension as bad.
-  for(b = 1; b < (1 << global_dim); b <<= 1)
+  for(b = 1; b < ncells; b <<= 1)
     cellBlocked[dim][c ^ b]++;
 }
 
@@ -94,7 +101,7 @@ void removeCube(int c, int dim) {
     cellUsed[c + dimoffsets[dim][i]] = 0;
 
   // And its adjacent cubes in this dimension are less bad.
-  for(b = 1; b < (1 << global_dim); b <<= 1)
+  for(b = 1; b < ncells; b <<= 1)
     cellBlocked[dim][c ^ b]--;
 }
 
@@ -111,9 +118,9 @@ int buildLayout(int index, int count, int d, int c) {
   if(count == histogram[index]) { // Placed all of this index
     //printf("Final check...\n");
     if(index == global_dim - 1) { // Placed all indices except zero-dimensional; check those!
-      for(c = 0; c < (1 << global_dim); c++)
+      for(c = 0; c < ncells; c++)
         if(!cellUsed[c])
-          for(b = 1; b < (1 << global_dim); b <<= 1)
+          for(b = 1; b < ncells; b <<= 1)
             if(!cellUsed[c ^ b]) { // There's an adjacent (face-aligned) 0-cell; this fails.
               //printf("Final check failed: %d %d\n", c, c^b);
               return 0;
@@ -128,7 +135,7 @@ int buildLayout(int index, int count, int d, int c) {
     return 0;
   }
 
-  for(; c < (1 << global_dim); c++) {
+  for(; c < ncells; c++) {
     //printf("Checking [%d %d]\n", c, dim);
     // Only consider cubes which are 0 in the dimension we're checking.
     if(c & dim)
@@ -216,15 +223,22 @@ void buildHistograms(int index, int real) {
 }
 
 int main(int argc, char **argv) {
-  int dim;
   int i;
 
+#ifdef DIMENSION
+  if(argc != 1) {
+    printf("Usage: %s\n", argv[0]);
+    printf("Dimension: %d\n", global_dim);
+    return 1;
+  }
+#else
   if(argc != 2) {
     printf("Usage: %s [dimensions]\n", argv[0]);
     return 1;
   }
-  sscanf(argv[1], "%d", &dim);
-  global_dim = dim;
+  sscanf(argv[1], "%d", &global_dim);
+  ncells = 1 << global_dim;
+#endif // DIMENSION
   global_start_time = currentTime();
 
   arrangeDims();
