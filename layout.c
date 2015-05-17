@@ -74,6 +74,30 @@ void printLayout() {
 
 void printHistogram();
 
+void placeCube(int c, int dim) {
+  int i, b;
+  // This cell and all cells in the cube are used.
+  cellUsed[c] = dim;
+  for(i = 0; dimoffsets[dim][i]; i++)
+    cellUsed[c + dimoffsets[dim][i]] = dim;
+
+  // And its adjacent cubes in this dimension as bad.
+  for(b = 1; b < (1 << global_dim); b <<= 1)
+    cellBlocked[dim][c ^ b]++;
+}
+
+void removeCube(int c, int dim) {
+  int i, b;
+  // This cell and all cells in the cube are now unused.
+  cellUsed[c] = 0;
+  for(i = 0; dimoffsets[dim][i]; i++)
+    cellUsed[c + dimoffsets[dim][i]] = 0;
+
+  // And its adjacent cubes in this dimension are less bad.
+  for(b = 1; b < (1 << global_dim); b <<= 1)
+    cellBlocked[dim][c ^ b]--;
+}
+
 // - index: which histogram index
 // - count: which element within this histogram index
 // - d: current dimension index
@@ -123,36 +147,11 @@ int buildLayout(int index, int count, int d, int c) {
     if(dimoffsets[dim][i])
       continue;
 
-    // Now we know this cube is safe.  Let's place it...
-    cellUsed[c] = dim;
-    for(i = 0; dimoffsets[dim][i]; i++)
-      cellUsed[c + dimoffsets[dim][i]] = dim;
-    /*for(c2 = 0; c2 < (1 << global_dim); c2++)
-      if(!((c ^ c2) & (~dim)))
-        cellUsed[c2] = dim;*/
-
-    // And mark its adjacent cubes in this dimension as bad.
-    for(b = 1; b < (1 << global_dim); b <<= 1) {
-      //printf("Blocking [%d %d]\n", c ^ b, dim);
-      cellBlocked[dim][c ^ b]++;
-    }
-
-    //printf("Adding [%d %d]\n", c, dim);
-
-    // And recurse
+    // Now we know this cube is safe.  Let's go!
+    placeCube(c, dim);
     success = buildLayout(index, count + 1, d, c + 1);
+    removeCube(c, dim);
 
-    //printf("Removing [%d %d]\n", c, dim);
-
-    // And remove the cube:
-    // Unmark its adjacent cubes in this dimension as bad.
-    for(b = 1; b < (1 << global_dim); b <<= 1)
-      cellBlocked[dim][c ^ b]--;
-
-    // And mark this cube as unused.
-    cellUsed[c] = 0;
-    for(i = 0; dimoffsets[dim][i]; i++)
-      cellUsed[c + dimoffsets[dim][i]] = 0;
     //printf("Leaving\n");
     //printLayout();
     if(success)
@@ -161,6 +160,15 @@ int buildLayout(int index, int count, int d, int c) {
 
   // Finally, let's consider this dimension finished and try the next one:
   return buildLayout(index, count, d + 1, 0);
+}
+
+int startBuildLayout() {
+  int index;
+  for(index = 0; !histogram[index]; index++);
+  placeCube(0, dims[global_dim - index][1]);
+  int success = buildLayout(index, 1, 1, 1);
+  removeCube(0, dims[global_dim - index][1]);
+  return success;
 }
 
 void printHistogram() {
@@ -191,7 +199,7 @@ void buildHistograms(int index, int real) {
     printHistogram();
     printf(": ");
     fflush(stdout);
-    if(!buildLayout(0, 0, 1, 0))
+    if(!startBuildLayout())
       printf("Failure\n");
     return;
   }
