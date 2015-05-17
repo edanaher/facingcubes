@@ -6,7 +6,11 @@ OPTFLAGS=-O3 ${CFLAGS}
 # - DIMENSION: hardcode dimension instead of using ARGV[0]
 # - RANDOMCHOOSE: at each step, choose this many options instead of trying all
 # - COUNTINGDEPTH: count how many times each depth is hit, up to this depth.
+# - ONLYCOUNTDEPTH: return once COUNTINGDEPTH depth is reached.
+# - DISPLAYDEPTH: How deep to show progress
 # - CACHEDEPTH: how deep to cache.
+# - CACHESIZE: the size of the cache
+# - CACHEMAPSIZE: the size of the hashmap indexing the cache
 
 brute: brute.c
 	${CC} brute.c -obrute ${OPTFLAGS}
