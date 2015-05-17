@@ -428,7 +428,9 @@ void signalHandler(int sig) {
 }
 
 void printStatus() {
+#ifdef DISPLAYDEPTH
   long long now = runningTime();
+#endif
   char filename[100];
   sprintf(filename, "results/%s.%d.wip", FILEPREFIX, global_dim);
   printDistributions(filename, global_dim);
@@ -596,8 +598,10 @@ int buildMatches(int *matching, dimpairing *pairings, int cur, int ignoreCache) 
     //printf("%lld.%06lld %*s %d\n", runningTime() / 1000000LL, runningTime() % 1000000LL, global_curdepth, "", global_curdepth);
     //printPairingsOneline(pairings);
     counts[global_curdepth]++;
+#ifdef DISPLAYDEPTH
     if(global_curdepth == DISPLAYDEPTH)
       printStatus();
+#endif
   }
 #ifdef ONLYCOUNTDEPTH
   else
