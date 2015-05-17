@@ -9,14 +9,21 @@ int histogram[MAXDIMENSION + 1];
 // usual trick where first element is length
 int dims[MAXDIMENSION + 1][MAXDIMENSION * MAXDIMENSION];
 
+// store the offsets within each dimension; e.g., 6 is 2, 4, 6
+int dimoffsets[1 << MAXDIMENSION][1 + (1 << MAXDIMENSION)];
+
 void arrangeDims() {
-  int i, b;
+  int i, j, b;
   for(i = 0; i < (1 << global_dim); i++) {
     int ones = 0;
     for(b = 0; b <= global_dim; b++)
       if(i & (1 << b))
         ones++;
     dims[ones][++dims[ones][0]] = i;
+    int n = 0;
+    for(j = 1; j < (1 << global_dim); j++)
+      if(!(j & ~i))
+        dimoffsets[i][n++] = j;
     //printf("%d => %d\n", i, ones);
   }
   /*for(i = 0; i <= global_dim; i++) {
@@ -24,6 +31,13 @@ void arrangeDims() {
     int j;
     for(j = 0; j <= dims[i][0]; j++)
       printf(" %d", dims[i][j]);
+    printf("\n");
+  }*/
+  /*for(i = 0; i < (1 << global_dim); i++) {
+    printf("%d:", i);
+    int j;
+    for(j = 0; dimoffsets[i][j]; j++)
+      printf(" %d", dimoffsets[i][j]);
     printf("\n");
   }*/
 }
@@ -50,7 +64,7 @@ void printHistogram();
 // - d: current dimension index
 int buildLayout(int index, int count, int d, int c) {
   int dim = dims[global_dim - index][d];
-  int b, c2, success = 0;
+  int b, i, success = 0;
 
   //printf("Entering %d %d %d (%d)\n", index, count, d, dim);
   //printLayout();
@@ -86,21 +100,21 @@ int buildLayout(int index, int count, int d, int c) {
     if(cellUsed[c] || cellBlocked[dim][c])
       continue;
 
-    // This is a stupid way to do this, but it's easy: For each cell, if it
-    // differs from c only by dimensions in dim, it's in the cube.  If it's
-    // occupied, then this position won't work.
-    for(c2 = 0; c2 < (1 << global_dim); c2++) {
-      if(!((c ^ c2) & (~dim)) && cellUsed[c2])
+    // For each cell, if it differs from c only by dimensions in dim, it's in
+    // the cube.  If it's occupied, then this position won't work.
+    for(i = 0; dimoffsets[dim][i]; i++)
+      if(cellUsed[c + dimoffsets[dim][i]])
         break;
-    }
-    if(c2 != (1 << global_dim))
+    if(dimoffsets[dim][i])
       continue;
 
     // Now we know this cube is safe.  Let's place it...
-    // Again, this is a stupid way to do this.
-    for(c2 = 0; c2 < (1 << global_dim); c2++)
+    cellUsed[c] = dim;
+    for(i = 0; dimoffsets[dim][i]; i++)
+      cellUsed[c + dimoffsets[dim][i]] = dim;
+    /*for(c2 = 0; c2 < (1 << global_dim); c2++)
       if(!((c ^ c2) & (~dim)))
-        cellUsed[c2] = dim;
+        cellUsed[c2] = dim;*/
 
     // And mark its adjacent cubes in this dimension as bad.
     for(b = 1; b < (1 << global_dim); b <<= 1) {
@@ -121,10 +135,9 @@ int buildLayout(int index, int count, int d, int c) {
       cellBlocked[dim][c ^ b]--;
 
     // And mark this cube as unused.
-    // Again, this is a stupid way to do this.
-    for(c2 = 0; c2 < (1 << global_dim); c2++)
-      if(!((c ^ c2) & (~dim)))
-        cellUsed[c2] = 0;
+    cellUsed[c] = 0;
+    for(i = 0; dimoffsets[dim][i]; i++)
+      cellUsed[c + dimoffsets[dim][i]] = 0;
     //printf("Leaving\n");
     //printLayout();
     if(success)
