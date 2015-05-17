@@ -119,8 +119,8 @@ void addToCache(dimpairing *pairings) {
   unsigned int h = hash(pairings);
   cacheload++;
   while(cachemap[h]) {
-    printf("Cache conflict %d (load: %d)! ", h, cacheload);
-    printPairingsOneline(pairings);
+    //printf("Cache conflict %d (load: %d)! ", h, cacheload);
+    //printPairingsOneline(pairings);
     h++;
   }
   cachemap[h] = cachetail;
