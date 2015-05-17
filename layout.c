@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <unistd.h>
+#include <sys/time.h>
 
 #define MAXDIMENSION 8
 
@@ -11,6 +13,19 @@ int dims[MAXDIMENSION + 1][MAXDIMENSION * MAXDIMENSION];
 
 // store the offsets within each dimension; e.g., 6 is 2, 4, 6
 int dimoffsets[1 << MAXDIMENSION][1 + (1 << MAXDIMENSION)];
+
+
+long long global_start_time;
+long long currentTime() {
+  struct timeval now;
+  gettimeofday(&now, NULL);
+
+  return (long long)(now.tv_sec) * 1000000 + now.tv_usec;
+}
+
+long long runningTime() {
+  return currentTime() - global_start_time;
+}
 
 void arrangeDims() {
   int i, j, b;
@@ -154,10 +169,28 @@ void printHistogram() {
     printf("%d ", histogram[i]);
 }
 
-void buildHistograms(int index) {
+int global_progress = 0;
+int total_histograms = 0;
+void printProgress() {
+  int i;
+  long long now = runningTime();
+  fprintf(stderr, "%6lld.%03lld %d/%d  ", now / 1000000, (now / 1000) % 1000, ++global_progress, total_histograms);
+  for(i = 0; i <= global_dim; i++)
+    fprintf(stderr, "%d ", histogram[i]);
+  fprintf(stderr, "\n");
+}
+
+void buildHistograms(int index, int real) {
   if(index == global_dim) {
+    if(!real) {
+      total_histograms++;
+      return;
+    }
+    if(!isatty(STDOUT_FILENO))
+      printProgress();
     printHistogram();
     printf(": ");
+    fflush(stdout);
     if(!buildLayout(0, 0, 1, 0))
       printf("Failure\n");
     return;
@@ -166,7 +199,7 @@ void buildHistograms(int index) {
   int total = histogram[index];
   histogram[index + 1] = 0;
   while(histogram[index] >= 0) {
-    buildHistograms(index + 1);
+    buildHistograms(index + 1, real);
     histogram[index]--;
     histogram[index + 1] += 2;
   }
@@ -184,12 +217,14 @@ int main(int argc, char **argv) {
   }
   sscanf(argv[1], "%d", &dim);
   global_dim = dim;
+  global_start_time = currentTime();
 
   arrangeDims();
   histogram[0] = 1;
   for(i = 1; i <= global_dim; i++)
     histogram[i] = 0;
-  buildHistograms(0);
+  buildHistograms(0, 0);
+  buildHistograms(0, 1);
 
   return 0;
 }
