@@ -203,25 +203,25 @@ int checkCache(dimpairing *pairings) {
     }
   }
 
-  for(perm = 0; perm < npermutations; perm++)
-    for(flip_dims = 0; flip_dims < (1 << global_dim); flip_dims++) {
-      for(d = 0; d < global_dim; d++) {
-        for(i = 0; i < pairings[d].len; i++) {
-          rotated[d].pairings[i].dims = 0;
-          for(b = 0; b < global_dim; b++) {
-            int bit = (pairings[d].pairings[i].dims & (1 << b)) >> b;
-            rotated[d].pairings[i].dims |= bit << (permutations[perm][b]);
-          }
+  for(perm = 0; perm < npermutations; perm++) {
+    for(i = 0; i < pairings[0].len; i++) {
+        rotated[0].pairings[i].dims = 0;
+        for(b = 0; b < global_dim; b++) {
+          int bit = (pairings[0].pairings[i].dims >> b) & 1;
+          rotated[0].pairings[i].dims |= bit << (permutations[perm][b]);
+        }
+    }
 
-          flipper = flip_dims & ~rotated[d].pairings[i].dims;
-          for(j = 0; j < pairings[d].pairings[i].len; j++) {
-            rotated[d].pairings[i].pairs[j] = 0;
-            for(b = 0; b < global_dim; b++) {
-              int bit = (pairings[d].pairings[i].pairs[j] & (1 << b)) >> b;
-              rotated[d].pairings[i].pairs[j] |= bit << (permutations[perm][b]);
-            }
-            rotated[d].pairings[i].pairs[j] ^= flipper;
+    for(flip_dims = 0; flip_dims < (1 << global_dim); flip_dims++) {
+      for(i = 0; i < pairings[0].len; i++) {
+        flipper = flip_dims & ~rotated[0].pairings[i].dims;
+        for(j = 0; j < pairings[0].pairings[i].len; j++) {
+          rotated[0].pairings[i].pairs[j] = 0;
+          for(b = 0; b < global_dim; b++) {
+            int bit = (pairings[0].pairings[i].pairs[j] & (1 << b)) >> b;
+            rotated[0].pairings[i].pairs[j] |= bit << (permutations[perm][b]);
           }
+          rotated[0].pairings[i].pairs[j] ^= flipper;
         }
       }
       if(checkCacheRotation(rotated)) {
@@ -229,6 +229,7 @@ int checkCache(dimpairing *pairings) {
         return 1;
       }
     }
+  }
 
   free(rotated);
   return 0;
