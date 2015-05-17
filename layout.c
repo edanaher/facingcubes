@@ -48,9 +48,9 @@ void printHistogram();
 // - index: which histogram index
 // - count: which element within this histogram index
 // - d: current dimension index
-int buildLayout(int index, int count, int d) {
+int buildLayout(int index, int count, int d, int c) {
   int dim = dims[global_dim - index][d];
-  int b, c, c2, success = 0;
+  int b, c2, success = 0;
 
   //printf("Entering %d %d %d (%d)\n", index, count, d, dim);
   //printLayout();
@@ -69,13 +69,13 @@ int buildLayout(int index, int count, int d) {
       printLayout();
       return 1;
     } else { // Not finished; start next index
-      return buildLayout(index + 1, 0, 1);
+      return buildLayout(index + 1, 0, 1, 0);
     }
   } else if(d > dims[global_dim - index][0]) { // Out of dimensions for this index; give up.
     return 0;
   }
 
-  for(c = 0; c < (1 << global_dim); c++) {
+  for(; c < (1 << global_dim); c++) {
     //printf("Checking [%d %d]\n", c, dim);
     // Only consider cubes which are 0 in the dimension we're checking.
     if(c & dim)
@@ -111,7 +111,7 @@ int buildLayout(int index, int count, int d) {
     //printf("Adding [%d %d]\n", c, dim);
 
     // And recurse
-    success = buildLayout(index, count + 1, d);
+    success = buildLayout(index, count + 1, d, c + 1);
 
     //printf("Removing [%d %d]\n", c, dim);
 
@@ -132,7 +132,7 @@ int buildLayout(int index, int count, int d) {
   }
 
   // Finally, let's consider this dimension finished and try the next one:
-  return buildLayout(index, count, d + 1);
+  return buildLayout(index, count, d + 1, 0);
 }
 
 void printHistogram() {
@@ -145,7 +145,7 @@ void buildHistograms(int index) {
   if(index == global_dim) {
     printHistogram();
     printf(": ");
-    if(!buildLayout(0, 0, 1))
+    if(!buildLayout(0, 0, 1, 0))
       printf("Failure\n");
     return;
   }
