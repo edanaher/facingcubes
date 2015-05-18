@@ -172,6 +172,8 @@ int buildLayout(int index, int count, int d, int c) {
 int startBuildLayout() {
   int index;
   for(index = 0; !histogram[index]; index++);
+  if(index == global_dim) // Don't add a simple cube; it makes things sad.
+    return buildLayout(index - 1, 0, 1, 0);
   placeCube(0, dims[global_dim - index][1]);
   int success = buildLayout(index, 1, 1, 1);
   removeCube(0, dims[global_dim - index][1]);
