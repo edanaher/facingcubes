@@ -108,9 +108,10 @@ void removeCube(int c, int dim) {
   // And its adjacent cubes in this dimension are less bad.
   for(b = 1; b < ncells; b <<= 1)
     cellBlocked[dim][c ^ b]--;
+  placedCubes.len--;
 }
 
-int counts[MAXDIMENSION + 1];
+int counts[MAXDIMENSION + 1][1 << (MAXDIMENSION - 2)];
 
 // - index: which histogram index
 // - count: which element within this histogram index
@@ -119,7 +120,7 @@ int buildLayout(int index, int count, int d, int c) {
   int dim = dims[global_dim - index][d];
   int b, i, success = 0;
 
-  counts[index]++;
+  counts[index][count]++;
 
   //printf("Entering %d %d %d (%d)\n", index, count, d, dim);
   //printLayout();
@@ -137,7 +138,7 @@ int buildLayout(int index, int count, int d, int c) {
   if(count == histogram[index]) { // Placed all of this index
     //printf("Final check...\n");
     if(index == global_dim - 1) { // Placed all indices except zero-dimensional; check those!
-      counts[index+1]++;
+      counts[index+1][0]++;
       for(c = 0; c < ncells; c++)
         if(!cellUsed[c])
           for(b = 1; b < ncells; b <<= 1)
@@ -190,13 +191,15 @@ int buildLayout(int index, int count, int d, int c) {
 }
 
 int startBuildLayout() {
-  int i;
+  int i, j;
   int index;
 #ifdef TIMELIMIT
   global_hist_timeout = runningTime() + TIMELIMIT * 1000000;
 #endif
-  for(i = 0; i <= MAXDIMENSION; i++)
-    counts[i] = 0;
+  for(i = 0; i <= global_dim; i++)
+    for(j = 0; j < histogram[i]; j++)
+      counts[i][j] = 0;
+  counts[global_dim][0] = 0;
   for(index = 0; !histogram[index]; index++);
   if(index == global_dim) // Don't add a simple cube; it makes things sad.
     return buildLayout(index - 1, 0, 1, 0);
@@ -215,7 +218,7 @@ void printHistogram() {
 int global_progress = 0;
 int total_histograms = 0;
 void printProgress(int result) {
-  int i;
+  int i, j;
   long long now = runningTime();
   fprintf(stderr, "%6lld.%03lld %d/%d  ", now / 1000000, (now / 1000) % 1000, ++global_progress, total_histograms);
   for(i = 0; i <= global_dim; i++)
@@ -225,13 +228,17 @@ void printProgress(int result) {
     case 1: fprintf(stderr, "Success"); break;
     case -1: fprintf(stderr, "Timeout"); break;
   }
-  for(i = 0; i <= global_dim; i++)
-    fprintf(stderr, " %d", counts[i]);
+  for(i = 0; i < global_dim; i++) {
+    fprintf(stderr, " ");
+    for(j = 0; j < (histogram[i] ? histogram[i] : 1); j++)
+      fprintf(stderr, " %d", counts[i][j]);
+  }
+  fprintf(stderr, "  %d", counts[i][0]);
   fprintf(stderr, "\n");
 }
 
 void buildHistograms(int index, int real) {
-  int i;
+  int i, j;
   if(index == global_dim) {
     if(!real) {
       total_histograms++;
@@ -245,8 +252,12 @@ void buildHistograms(int index, int real) {
       printf("Failure");
     if(result== -1)
       printf("Timeout");
-    for(i = 0; i <= global_dim; i++)
-      printf(" %d", counts[i]);
+    for(i = 0; i < global_dim; i++) {
+      printf(" ");
+      for(j = 0; j < (histogram[i] ? histogram[i] : 1); j++)
+        printf(" %d", counts[i][j]);
+    }
+    printf("  %d", counts[i][0]);
     printf("\n");
     if(!isatty(STDOUT_FILENO))
       printProgress(result);
