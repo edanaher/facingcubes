@@ -26,6 +26,18 @@ int dims[MAXDIMENSION + 1][MAXDIMENSION * MAXDIMENSION];
 // store the offsets within each dimension; e.g., 6 is 2, 4, 6
 int dimoffsets[1 << MAXDIMENSION][1 + (1 << MAXDIMENSION)];
 
+typedef struct {
+  int index;
+  int dim;
+  int coord;
+} placed_cube_t;
+
+typedef struct {
+  int len;
+  placed_cube_t cubes[1 << (MAXDIMENSION / 2)];
+} placed_cubes_t;
+
+placed_cubes_t placedCubes;
 
 long long global_start_time;
 long long currentTime() {
@@ -81,12 +93,14 @@ void printLayout() {
   for(i = 0; i < ncells; i++)
     if(!(i & cellUsed[i]))
       printf("[%d %d] ", i, cellUsed[i]);
+  for(i = 0; i < placedCubes.len; i++)
+    printf("{%d %d %d} ", placedCubes.cubes[i].index, placedCubes.cubes[i].dim, placedCubes.cubes[i].coord);
   //printf("\n");
 }
 
 void printHistogram();
 
-void placeCube(int c, int dim) {
+void placeCube(int c, int dim, int index) {
   int i, b;
   // This cell and all cells in the cube are used.
   cellUsed[c] = dim;
@@ -96,6 +110,11 @@ void placeCube(int c, int dim) {
   // And its adjacent cubes in this dimension as bad.
   for(b = 1; b < ncells; b <<= 1)
     cellBlocked[dim][c ^ b]++;
+
+  placedCubes.cubes[placedCubes.len].index = index;
+  placedCubes.cubes[placedCubes.len].dim = dim;
+  placedCubes.cubes[placedCubes.len].coord = c;
+  placedCubes.len++;
 }
 
 void removeCube(int c, int dim) {
@@ -176,7 +195,7 @@ int buildLayout(int index, int count, int d, int c) {
       continue;
 
     // Now we know this cube is safe.  Let's go!
-    placeCube(c, dim);
+    placeCube(c, dim, index);
     success = buildLayout(index, count + 1, d, c + 1);
     removeCube(c, dim);
 
@@ -203,7 +222,7 @@ int startBuildLayout() {
   for(index = 0; !histogram[index]; index++);
   if(index == global_dim) // Don't add a simple cube; it makes things sad.
     return buildLayout(index - 1, 0, 1, 0);
-  placeCube(0, dims[global_dim - index][1]);
+  placeCube(0, dims[global_dim - index][1], index);
   int success = buildLayout(index, 1, 1, 1);
   removeCube(0, dims[global_dim - index][1]);
   return success;
