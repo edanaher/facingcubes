@@ -15,7 +15,7 @@ int ncells;
 #endif // DIMENSION
 
 #ifdef TIMELIMIT
-long long global_hist_timeout;
+unsigned long long global_hist_timeout;
 int hist_timeout_counter = 0;
 #endif
 
@@ -221,15 +221,15 @@ int checkCache() {
   return 0;
 }
 
-long long global_start_time;
-long long currentTime() {
+unsigned long long global_start_time;
+unsigned long long currentTime() {
   struct timeval now;
   gettimeofday(&now, NULL);
 
   return (long long)(now.tv_sec) * 1000000 + now.tv_usec;
 }
 
-long long runningTime() {
+unsigned long long runningTime() {
   return currentTime() - global_start_time;
 }
 
@@ -406,7 +406,7 @@ int startBuildLayout() {
 #ifdef TIMELIMIT
   global_hist_timeout = runningTime() + TIMELIMIT * 1000000;
 #endif
-  for(i = 0; i <= global_dim; i++)
+  for(i = 0; i < global_dim; i++)
     for(j = 0; j < histogram[i]; j++)
       counts[i][j] = 0;
   counts[global_dim][0] = 0;
