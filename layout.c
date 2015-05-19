@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/time.h>
 
@@ -35,6 +36,10 @@ int dims[MAXDIMENSION + 1][MAXDIMENSION * MAXDIMENSION];
 // store the offsets within each dimension; e.g., 6 is 2, 4, 6
 int dimoffsets[1 << MAXDIMENSION][1 + (1 << MAXDIMENSION)];
 
+// All permutations of up to global_dim elements; used for rotations.
+int npermutations;
+int permutations[720][MAXDIMENSION];
+
 typedef struct {
   int index;
   int dim;
@@ -51,6 +56,30 @@ placed_cubes_t placedCubes;
 // A packed array of placed_cubes;
 char *cache;
 int cachetail;
+
+void initPermutations() {
+  int d, i, b;
+  int nsofar = 1;
+  for(i = 0; i < global_dim; i++)
+    permutations[0][i] = i;
+  for(d = 1; d < global_dim; d++) {
+    for(b = 0; b < d; b++)
+      for(i = 0; i < nsofar; i++) {
+        int cur = i + (b + 1) * nsofar;
+        memcpy(permutations[cur], permutations[i], sizeof(permutations[0]));
+        permutations[cur][d] = permutations[i][b];
+        permutations[cur][b] = d;
+      }
+    nsofar *= (d + 1);
+  }
+  npermutations = nsofar;
+  /*for(d = 0; d < npermutations; d++) {
+    for(i = 0; i < global_dim; i++)
+      printf("%d ", permutations[d][i]);
+    printf("\n");
+  }*/
+}
+
 
 void initCache() {
   cachetail = 1; // leave zero empty so zero means not in cache.
@@ -104,25 +133,37 @@ int checkCacheElement(placed_cubes_t *cubes) {
   return 0;
 }
 
+int rotate(int n, int perm) {
+  int r = 0;
+  int b;
+  for(b = 0; b < global_dim; b++)
+    r |= ((n >> b) & 1) << permutations[perm][b];
+  return r;
+}
+
 int checkCache() {
   int flip_dims = 0, netFlipper = 0;
-  int i;
+  int i, perm;
   placed_cubes_t cubes;
 
   cubes.len = placedCubes.len;
-  for(i = 0; i < placedCubes.len; i++) {
-    cubes.cubes[i].index = placedCubes.cubes[i].index;
-    cubes.cubes[i].dim = placedCubes.cubes[i].dim;
-    cubes.cubes[i].coord = placedCubes.cubes[i].coord;
-  }
+  for(perm = 0; perm < npermutations; perm++) {
+    for(i = 0; i < placedCubes.len; i++) {
+      cubes.cubes[i].index = placedCubes.cubes[i].index;
+      cubes.cubes[i].dim = rotate(placedCubes.cubes[i].dim, perm);
+      cubes.cubes[i].coord = rotate(placedCubes.cubes[i].coord, perm);
+    }
 
-  for(flip_dims = 0; flip_dims < (1 << global_dim); flip_dims++) {
-    netFlipper ^= flip_dims;
-    for(i = 0; i < placedCubes.len; i++)
-      cubes.cubes[i].coord ^= netFlipper & ~cubes.cubes[i].dim;
+    /*printf("Rotation: ");
+    printPlacedCubes(&cubes);*/
 
-    if(checkCacheElement(&cubes)) {
-      return 1;
+    for(flip_dims = 0; flip_dims < (1 << global_dim); flip_dims++) {
+      netFlipper ^= flip_dims;
+      for(i = 0; i < placedCubes.len; i++)
+        cubes.cubes[i].coord ^= netFlipper & ~cubes.cubes[i].dim;
+
+      if(checkCacheElement(&cubes))
+        return 1;
     }
   }
   return 0;
@@ -412,9 +453,11 @@ int main(int argc, char **argv) {
 
   arrangeDims();
   initCache();
+  initPermutations();
   histogram[0] = 1;
   for(i = 1; i <= global_dim; i++)
     histogram[i] = 0;
+
   buildHistograms(0, 0);
   buildHistograms(0, 1);
 
