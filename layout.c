@@ -107,9 +107,9 @@ unsigned int hash(placed_cubes_t *cubes) {
   int h = (cubes->len * 1299721) % CACHEMAPSIZE;
   int i;
   for(i = 0; i < cubes->len; i++) {
-    h = (h + (cubes->cubes[i].dim + 1000) * (cubes->cubes[i].coord + 79));
+    h = (h + (cubes->cubes[i].dim + 1000) * (cubes->cubes[i].coord + 1));
   }
-  return h;
+  return h % CACHEMAPSIZE;
 }
 
 void addToCache() {
@@ -119,6 +119,7 @@ void addToCache() {
 
   unsigned int h = hash(&placedCubes);
   while(cachemap[h]) {
+    //printf("Conflict on %d\n", h);
     h++;
     if(h > CACHEMAPSIZE)
       h = 0;
@@ -365,7 +366,7 @@ int buildLayout(int index, int count, int d, int c) {
     // Now we know this cube is safe.  Let's go!
     placeCube(c, dim, index);
     //printf("Placed cube %d %d %d\n", index, dim, c);
-    if(placedCubes.len < CACHEDEPTH) {
+    if(placedCubes.len <= CACHEDEPTH) {
       if(checkCache()) { // Already saw it, must have failed.
         //printf("cached\n");
         removeCube(c, dim);

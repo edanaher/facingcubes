@@ -6,6 +6,9 @@ OPTFLAGS=-O3 ${CFLAGS}
 # Compile flags:
 # - DIMENSION: hardcode dimension instead of using ARGV[0]
 # - TIMELIMIT: how many seconds to spend on each case before bailing
+# - CACHESIZE: how much space to use for the cache
+# - CACHEMAPSIZE: how many elements to put in the cachemap
+# - CACHEDEPTH: How many layers of the search tree to cache
 
 layout: layout.c
 	${CC} layout.c -olayout ${OPTFLAGS}
