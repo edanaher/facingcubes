@@ -81,7 +81,7 @@ void printLayout() {
   for(i = 0; i < ncells; i++)
     if(!(i & cellUsed[i]))
       printf("[%d %d] ", i, cellUsed[i]);
-  printf("\n");
+  //printf("\n");
 }
 
 void printHistogram();
@@ -110,12 +110,16 @@ void removeCube(int c, int dim) {
     cellBlocked[dim][c ^ b]--;
 }
 
+int counts[MAXDIMENSION + 1];
+
 // - index: which histogram index
 // - count: which element within this histogram index
 // - d: current dimension index
 int buildLayout(int index, int count, int d, int c) {
   int dim = dims[global_dim - index][d];
   int b, i, success = 0;
+
+  counts[index]++;
 
   //printf("Entering %d %d %d (%d)\n", index, count, d, dim);
   //printLayout();
@@ -133,6 +137,7 @@ int buildLayout(int index, int count, int d, int c) {
   if(count == histogram[index]) { // Placed all of this index
     //printf("Final check...\n");
     if(index == global_dim - 1) { // Placed all indices except zero-dimensional; check those!
+      counts[index+1]++;
       for(c = 0; c < ncells; c++)
         if(!cellUsed[c])
           for(b = 1; b < ncells; b <<= 1)
@@ -185,10 +190,13 @@ int buildLayout(int index, int count, int d, int c) {
 }
 
 int startBuildLayout() {
+  int i;
   int index;
 #ifdef TIMELIMIT
   global_hist_timeout = runningTime() + TIMELIMIT * 1000000;
 #endif
+  for(i = 0; i <= MAXDIMENSION; i++)
+    counts[i] = 0;
   for(index = 0; !histogram[index]; index++);
   if(index == global_dim) // Don't add a simple cube; it makes things sad.
     return buildLayout(index - 1, 0, 1, 0);
@@ -217,10 +225,13 @@ void printProgress(int result) {
     case 1: fprintf(stderr, "Success"); break;
     case -1: fprintf(stderr, "Timeout"); break;
   }
+  for(i = 0; i <= global_dim; i++)
+    fprintf(stderr, " %d", counts[i]);
   fprintf(stderr, "\n");
 }
 
 void buildHistograms(int index, int real) {
+  int i;
   if(index == global_dim) {
     if(!real) {
       total_histograms++;
@@ -231,9 +242,12 @@ void buildHistograms(int index, int real) {
     fflush(stdout);
     int result = startBuildLayout();
     if(!result)
-      printf("Failure\n");
+      printf("Failure");
     if(result== -1)
-      printf("Timeout\n");
+      printf("Timeout");
+    for(i = 0; i <= global_dim; i++)
+      printf(" %d", counts[i]);
+    printf("\n");
     if(!isatty(STDOUT_FILENO))
       printProgress(result);
     return;
