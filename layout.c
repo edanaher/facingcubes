@@ -54,7 +54,7 @@ typedef struct {
 placed_cubes_t placedCubes;
 
 // A packed array of placed_cubes;
-char *cache;
+unsigned char *cache;
 int cachetail;
 
 void initPermutations() {
@@ -90,15 +90,18 @@ void initCache() {
   }
 }
 
+void printPlacedCubes(placed_cubes_t *cubes);
+
 void addToCache() {
   int i;
+  //printf("Added to cache %d: ", cachetail);
   cache[cachetail++] = placedCubes.len;
   for(i = 0; i < placedCubes.len; i++) {
     cache[cachetail++] = placedCubes.cubes[i].index;
     cache[cachetail++] = placedCubes.cubes[i].dim;
     cache[cachetail++] = placedCubes.cubes[i].coord;
   }
-  //printf("Added to cache: %d (of len %d)\n", cachetail, placedCubes.len);
+  //printPlacedCubes(&placedCubes);
 }
 
 void printPlacedCubes(placed_cubes_t *cubes) {
@@ -154,13 +157,15 @@ int checkCache() {
       cubes.cubes[i].coord = rotate(placedCubes.cubes[i].coord, perm);
     }
 
-    /*printf("Rotation: ");
-    printPlacedCubes(&cubes);*/
+    //printf("Rotation: ");
+    //printPlacedCubes(&cubes);
 
     for(flip_dims = 0; flip_dims < (1 << global_dim); flip_dims++) {
       netFlipper ^= flip_dims;
       for(i = 0; i < placedCubes.len; i++)
         cubes.cubes[i].coord ^= netFlipper & ~cubes.cubes[i].dim;
+      //printf("Reflection: ");
+      //printPlacedCubes(&cubes);
 
       if(checkCacheElement(&cubes))
         return 1;
@@ -328,6 +333,7 @@ int buildLayout(int index, int count, int d, int c) {
     placeCube(c, dim, index);
     if(placedCubes.len < CACHEDEPTH) {
       if(checkCache()) { // Already saw it, must have failed.
+        //printf("cached\n");
         removeCube(c, dim);
         return 0;
       }
@@ -356,7 +362,7 @@ int startBuildLayout() {
     for(j = 0; j < histogram[i]; j++)
       counts[i][j] = 0;
   counts[global_dim][0] = 0;
-  cachetail = 0;
+  cachetail = 1;
   for(index = 0; !histogram[index]; index++);
   if(index == global_dim) // Don't add a simple cube; it makes things sad.
     return buildLayout(index - 1, 0, 1, 0);
