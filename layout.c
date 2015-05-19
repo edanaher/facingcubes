@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <sys/time.h>
 
@@ -15,6 +16,14 @@ int ncells;
 #ifdef TIMELIMIT
 long long global_hist_timeout;
 int hist_timeout_counter = 0;
+#endif
+
+#ifndef CACHESIZE
+#define CACHESIZE (1LL<<30)
+#endif
+
+#ifndef CACHEDEPTH
+#define CACHEDEPTH 3
 #endif
 
 int histogram[MAXDIMENSION + 1];
@@ -38,6 +47,86 @@ typedef struct {
 } placed_cubes_t;
 
 placed_cubes_t placedCubes;
+
+// A packed array of placed_cubes;
+char *cache;
+int cachetail;
+
+void initCache() {
+  cachetail = 1; // leave zero empty so zero means not in cache.
+  cache = malloc(CACHESIZE);
+  if(!cache) {
+    printf("Failure to allocate cache of size %lld\n", CACHESIZE);
+    exit(1);
+  }
+}
+
+void addToCache() {
+  int i;
+  cache[cachetail++] = placedCubes.len;
+  for(i = 0; i < placedCubes.len; i++) {
+    cache[cachetail++] = placedCubes.cubes[i].index;
+    cache[cachetail++] = placedCubes.cubes[i].dim;
+    cache[cachetail++] = placedCubes.cubes[i].coord;
+  }
+  //printf("Added to cache: %d (of len %d)\n", cachetail, placedCubes.len);
+}
+
+void printPlacedCubes(placed_cubes_t *cubes) {
+  int i;
+  for(i = 0; i < cubes->len; i++)
+    printf("{%d %d %d} ", cubes->cubes[i].index, cubes->cubes[i].dim, cubes->cubes[i].coord);
+  printf("\n");
+}
+
+
+// TODO: replace search with hash
+int checkCacheElement(placed_cubes_t *cubes) {
+  int i, j;
+  for(i = 1; i < cachetail; i += 3 * cache[i] + 1) {
+    //printf("Checking cache: %d\n", i);
+    if(cache[i] != cubes->len)
+      continue;
+    for(j = 0; j < cubes->len; j++) {
+      if(cache[i + 1 + 3*j] != cubes->cubes[j].index)
+        break;
+      if(cache[i + 2 + 3*j] != cubes->cubes[j].dim)
+        break;
+      if(cache[i + 3 + 3*j] != cubes->cubes[j].coord)
+        break;
+    }
+    if(j == cubes->len) {
+      //printf("Found in cache: (%d %d) ", i, cubes->len);
+      //printPlacedCubes(cubes);
+      return 1;
+    }
+  }
+  return 0;
+}
+
+int checkCache() {
+  int flip_dims = 0, netFlipper = 0;
+  int i;
+  placed_cubes_t cubes;
+
+  cubes.len = placedCubes.len;
+  for(i = 0; i < placedCubes.len; i++) {
+    cubes.cubes[i].index = placedCubes.cubes[i].index;
+    cubes.cubes[i].dim = placedCubes.cubes[i].dim;
+    cubes.cubes[i].coord = placedCubes.cubes[i].coord;
+  }
+
+  for(flip_dims = 0; flip_dims < (1 << global_dim); flip_dims++) {
+    netFlipper ^= flip_dims;
+    for(i = 0; i < placedCubes.len; i++)
+      cubes.cubes[i].coord ^= netFlipper & ~cubes.cubes[i].dim;
+
+    if(checkCacheElement(&cubes)) {
+      return 1;
+    }
+  }
+  return 0;
+}
 
 long long global_start_time;
 long long currentTime() {
@@ -196,6 +285,13 @@ int buildLayout(int index, int count, int d, int c) {
 
     // Now we know this cube is safe.  Let's go!
     placeCube(c, dim, index);
+    if(placedCubes.len < CACHEDEPTH) {
+      if(checkCache()) { // Already saw it, must have failed.
+        removeCube(c, dim);
+        return 0;
+      }
+      addToCache();
+    }
     success = buildLayout(index, count + 1, d, c + 1);
     removeCube(c, dim);
 
@@ -219,6 +315,7 @@ int startBuildLayout() {
     for(j = 0; j < histogram[i]; j++)
       counts[i][j] = 0;
   counts[global_dim][0] = 0;
+  cachetail = 0;
   for(index = 0; !histogram[index]; index++);
   if(index == global_dim) // Don't add a simple cube; it makes things sad.
     return buildLayout(index - 1, 0, 1, 0);
@@ -314,6 +411,7 @@ int main(int argc, char **argv) {
   global_start_time = currentTime();
 
   arrangeDims();
+  initCache();
   histogram[0] = 1;
   for(i = 1; i <= global_dim; i++)
     histogram[i] = 0;
