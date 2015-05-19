@@ -125,7 +125,7 @@ int buildLayout(int index, int count, int d, int c) {
   if(++hist_timeout_counter > 1000000 * TIMELIMIT) {
     //fprintf(stderr, "bail: %lld/%lld\n", runningTime(), global_hist_timeout);
     if(runningTime() > global_hist_timeout)
-      return 0;
+      return -1;
     hist_timeout_counter = 0;
   }
 #endif
@@ -177,7 +177,7 @@ int buildLayout(int index, int count, int d, int c) {
     //printf("Leaving\n");
     //printLayout();
     if(success)
-      return 1;
+      return success;
   }
 
   // Finally, let's consider this dimension finished and try the next one:
@@ -206,12 +206,17 @@ void printHistogram() {
 
 int global_progress = 0;
 int total_histograms = 0;
-void printProgress() {
+void printProgress(int result) {
   int i;
   long long now = runningTime();
   fprintf(stderr, "%6lld.%03lld %d/%d  ", now / 1000000, (now / 1000) % 1000, ++global_progress, total_histograms);
   for(i = 0; i <= global_dim; i++)
     fprintf(stderr, "%d ", histogram[i]);
+  switch(result) {
+    case 0: fprintf(stderr, "Failure"); break;
+    case 1: fprintf(stderr, "Success"); break;
+    case -1: fprintf(stderr, "Timeout"); break;
+  }
   fprintf(stderr, "\n");
 }
 
@@ -221,13 +226,16 @@ void buildHistograms(int index, int real) {
       total_histograms++;
       return;
     }
-    if(!isatty(STDOUT_FILENO))
-      printProgress();
     printHistogram();
     printf(": ");
     fflush(stdout);
-    if(!startBuildLayout())
+    int result = startBuildLayout();
+    if(!result)
       printf("Failure\n");
+    if(result== -1)
+      printf("Timeout\n");
+    if(!isatty(STDOUT_FILENO))
+      printProgress(result);
     return;
   }
 
