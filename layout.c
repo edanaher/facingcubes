@@ -23,8 +23,13 @@ int hist_timeout_counter = 0;
 #define CACHESIZE (1LL<<30)
 #endif
 
+#ifndef CACHEMAPSIZE
+// The five-millionth prime; will use just under 700MB of RAM.
+#define CACHEMAPSIZE 86028121
+#endif
+
 #ifndef CACHEDEPTH
-#define CACHEDEPTH 3
+#define CACHEDEPTH 4
 #endif
 
 int histogram[MAXDIMENSION + 1];
@@ -55,7 +60,8 @@ placed_cubes_t placedCubes;
 
 // A packed array of placed_cubes;
 unsigned char *cache;
-int cachetail;
+unsigned long long cachetail;
+unsigned long long *cachemap;
 
 void initPermutations() {
   int d, i, b;
@@ -88,14 +94,37 @@ void initCache() {
     printf("Failure to allocate cache of size %lld\n", CACHESIZE);
     exit(1);
   }
+  cachemap = calloc(CACHEMAPSIZE, sizeof(unsigned long long));
+  if(!cachemap) {
+    printf("Failure to allocate cachemap of size %d * %lu\n", CACHEMAPSIZE, sizeof(unsigned long long));
+    exit(1);
+  }
 }
 
 void printPlacedCubes(placed_cubes_t *cubes);
+
+unsigned int hash(placed_cubes_t *cubes) {
+  int h = (cubes->len * 1299721) % CACHEMAPSIZE;
+  int i;
+  for(i = 0; i < cubes->len; i++) {
+    h = (h + (cubes->cubes[i].dim + 1000) * (cubes->cubes[i].coord + 79));
+  }
+  return h;
+}
 
 void addToCache() {
   int i;
   //printf("Added to cache %d: ", cachetail);
   //printPlacedCubes(&placedCubes);
+
+  unsigned int h = hash(&placedCubes);
+  while(cachemap[h]) {
+    h++;
+    if(h > CACHEMAPSIZE)
+      h = 0;
+  }
+  cachemap[h] = cachetail;
+
   cache[cachetail++] = placedCubes.len;
   for(i = 0; i < placedCubes.len; i++) {
     cache[cachetail++] = placedCubes.cubes[i].index;
@@ -112,26 +141,30 @@ void printPlacedCubes(placed_cubes_t *cubes) {
 }
 
 
-// TODO: replace search with hash
-int checkCacheElement(placed_cubes_t *cubes) {
-  int i, j;
-  for(i = 1; i < cachetail; i += 3 * cache[i] + 1) {
-    //printf("Checking cache: %d\n", i);
-    if(cache[i] != cubes->len)
-      continue;
-    for(j = 0; j < cubes->len; j++) {
-      if(cache[i + 1 + 3*j] != cubes->cubes[j].index)
-        break;
-      if(cache[i + 2 + 3*j] != cubes->cubes[j].dim)
-        break;
-      if(cache[i + 3 + 3*j] != cubes->cubes[j].coord)
-        break;
-    }
-    if(j == cubes->len) {
-      //printf("Found in cache: (%d) ", i);
-      //printPlacedCubes(cubes);
+int checkCacheElement(placed_cubes_t *cubes, int e) {
+  int j;
+  //printf("Checking cache: %d\n", i);
+  if(cache[e] != cubes->len)
+    return 0;
+  for(j = 0; j < cubes->len; j++) {
+    if(cache[e + 1 + 3*j] != cubes->cubes[j].index)
+      return 0;
+    if(cache[e + 2 + 3*j] != cubes->cubes[j].dim)
+      return 0;
+    if(cache[e + 3 + 3*j] != cubes->cubes[j].coord)
+      return 0;
+  }
+  //printf("Found in cache: (%d) ", i);
+  //printPlacedCubes(cubes);
+  return 1;
+}
+
+int checkCacheRotation(placed_cubes_t *cubes) {
+  int h = hash(cubes);
+  while(cachemap[h]) {
+    if(checkCacheElement(cubes, cachemap[h]))
       return 1;
-    }
+    h++;
   }
   return 0;
 }
@@ -167,7 +200,7 @@ int checkCache() {
       //printf("Reflection: ");
       //printPlacedCubes(&cubes);
 
-      if(checkCacheElement(&cubes))
+      if(checkCacheRotation(&cubes))
         return 1;
     }
   }
@@ -364,6 +397,9 @@ int startBuildLayout() {
       counts[i][j] = 0;
   counts[global_dim][0] = 0;
   cachetail = 1;
+  // This is sparse, so it's faster to free and re-alloc than to zero out.
+  free(cachemap);
+  cachemap = calloc(CACHEMAPSIZE, sizeof(unsigned long long));
   for(index = 0; !histogram[index]; index++);
   if(index == global_dim) // Don't add a simple cube; it makes things sad.
     return buildLayout(index - 1, 0, 1, 0);
