@@ -48,7 +48,7 @@ typedef struct {
 
 typedef struct {
   int len;
-  placed_cube_t cubes[1 << (MAXDIMENSION / 2)];
+  placed_cube_t cubes[1 << (MAXDIMENSION - 1)];
 } placed_cubes_t;
 
 placed_cubes_t placedCubes;
@@ -95,13 +95,13 @@ void printPlacedCubes(placed_cubes_t *cubes);
 void addToCache() {
   int i;
   //printf("Added to cache %d: ", cachetail);
+  //printPlacedCubes(&placedCubes);
   cache[cachetail++] = placedCubes.len;
   for(i = 0; i < placedCubes.len; i++) {
     cache[cachetail++] = placedCubes.cubes[i].index;
     cache[cachetail++] = placedCubes.cubes[i].dim;
     cache[cachetail++] = placedCubes.cubes[i].coord;
   }
-  //printPlacedCubes(&placedCubes);
 }
 
 void printPlacedCubes(placed_cubes_t *cubes) {
@@ -128,7 +128,7 @@ int checkCacheElement(placed_cubes_t *cubes) {
         break;
     }
     if(j == cubes->len) {
-      //printf("Found in cache: (%d %d) ", i, cubes->len);
+      //printf("Found in cache: (%d) ", i);
       //printPlacedCubes(cubes);
       return 1;
     }
@@ -331,11 +331,12 @@ int buildLayout(int index, int count, int d, int c) {
 
     // Now we know this cube is safe.  Let's go!
     placeCube(c, dim, index);
+    //printf("Placed cube %d %d %d\n", index, dim, c);
     if(placedCubes.len < CACHEDEPTH) {
       if(checkCache()) { // Already saw it, must have failed.
         //printf("cached\n");
         removeCube(c, dim);
-        return 0;
+        continue;
       }
       addToCache();
     }
