@@ -12,6 +12,11 @@ int ncells;
 #define MAXDIMENSION 8
 #endif // DIMENSION
 
+#ifdef TIMELIMIT
+long long global_hist_timeout;
+int hist_timeout_counter = 0;
+#endif
+
 int histogram[MAXDIMENSION + 1];
 
 // store dimensions by which histogram index they belong in.
@@ -115,6 +120,16 @@ int buildLayout(int index, int count, int d, int c) {
   //printf("Entering %d %d %d (%d)\n", index, count, d, dim);
   //printLayout();
 
+#ifdef TIMELIMIT
+  // Tradeoff accuracy for less time wasted checking
+  if(++hist_timeout_counter > 1000000 * TIMELIMIT) {
+    //fprintf(stderr, "bail: %lld/%lld\n", runningTime(), global_hist_timeout);
+    if(runningTime() > global_hist_timeout)
+      return 0;
+    hist_timeout_counter = 0;
+  }
+#endif
+
   if(count == histogram[index]) { // Placed all of this index
     //printf("Final check...\n");
     if(index == global_dim - 1) { // Placed all indices except zero-dimensional; check those!
@@ -171,6 +186,9 @@ int buildLayout(int index, int count, int d, int c) {
 
 int startBuildLayout() {
   int index;
+#ifdef TIMELIMIT
+  global_hist_timeout = runningTime() + TIMELIMIT * 1000000;
+#endif
   for(index = 0; !histogram[index]; index++);
   if(index == global_dim) // Don't add a simple cube; it makes things sad.
     return buildLayout(index - 1, 0, 1, 0);
