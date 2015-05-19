@@ -178,6 +178,7 @@ int rotate(int n, int perm) {
   return r;
 }
 
+int nrotationsChecked = 0;
 int checkCache() {
   int flip_dims = 0, netFlipper = 0;
   int i, perm;
@@ -193,6 +194,18 @@ int checkCache() {
 
     //printf("Rotation: ");
     //printPlacedCubes(&cubes);
+    int firstIndex = cubes.cubes[0].index;
+    //printf("%d\n", firstIndex);
+    for(i = 0; i < cubes.len && cubes.cubes[i].index == firstIndex; i++)
+      if(cubes.cubes[i].dim == (1 << (global_dim - firstIndex)) - 1) {
+        //printf("Brekaing: %d == %d\n", cubes.cubes[i].dim, (1 << (global_dim - firstIndex)) - 1);
+        break;
+      }
+    //printf("%d/%d %d=%d\n", i, cubes.len, cubes.cubes[i].index, firstIndex);
+    if(i == cubes.len || cubes.cubes[i].index != firstIndex)
+      continue;
+
+    nrotationsChecked++;
 
     for(flip_dims = 0; flip_dims < (1 << global_dim); flip_dims++) {
       netFlipper ^= flip_dims;
@@ -520,6 +533,7 @@ int main(int argc, char **argv) {
 
   buildHistograms(0, 0);
   buildHistograms(0, 1);
+  fprintf(stderr, "Rotations checked: %d\n", nrotationsChecked);
 
   return 0;
 }
