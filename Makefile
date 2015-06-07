@@ -20,7 +20,7 @@ layout6: layout.c
 	${CC} layout.c -olayout6 ${OPTFLAGS} -DDIMENSION=6
 
 layout6timed: layout.c
-	${CC} layout.c -olayout6timed ${OPTFLAGS} -DDIMENSION=6 -DTIMELIMIT=60
+	${CC} layout.c -olayout6timed ${OPTFLAGS} -DDIMENSION=6 -DTIMELIMIT=600 -DCACHEDEPTH=4
 
 # Compile flags:
 # - DIMENSION: hardcode dimension instead of using ARGV[0]

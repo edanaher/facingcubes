@@ -43,7 +43,7 @@ int dimoffsets[1 << MAXDIMENSION][1 + (1 << MAXDIMENSION)];
 
 // All permutations of up to global_dim elements; used for rotations.
 int npermutations;
-int permutations[720][MAXDIMENSION];
+int permutations[7*720][MAXDIMENSION];
 
 typedef struct {
   int index;
@@ -312,7 +312,7 @@ void removeCube(int c, int dim) {
   placedCubes.len--;
 }
 
-int counts[MAXDIMENSION + 1][1 << (MAXDIMENSION - 2)];
+long long counts[MAXDIMENSION + 1][1 << (MAXDIMENSION - 2)];
 
 // - index: which histogram index
 // - count: which element within this histogram index
@@ -445,9 +445,9 @@ void printProgress(int result) {
   for(i = 0; i < global_dim; i++) {
     fprintf(stderr, " ");
     for(j = 0; j < (histogram[i] ? histogram[i] : 1); j++)
-      fprintf(stderr, " %d", counts[i][j]);
+      fprintf(stderr, " %lld", counts[i][j]);
   }
-  fprintf(stderr, "  %d", counts[i][0]);
+  fprintf(stderr, "  %lld", counts[i][0]);
   fprintf(stderr, "\n");
 }
 
@@ -469,9 +469,9 @@ void buildHistograms(int index, int real) {
     for(i = 0; i < global_dim; i++) {
       printf(" ");
       for(j = 0; j < (histogram[i] ? histogram[i] : 1); j++)
-        printf(" %d", counts[i][j]);
+        printf(" %lld", counts[i][j]);
     }
-    printf("  %d", counts[i][0]);
+    printf("  %lld", counts[i][0]);
     printf("\n");
     if(!isatty(STDOUT_FILENO))
       printProgress(result);
