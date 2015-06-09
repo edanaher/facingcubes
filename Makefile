@@ -9,6 +9,7 @@ OPTFLAGS=-O3 ${CFLAGS}
 # - CACHESIZE: how much space to use for the cache
 # - CACHEMAPSIZE: how many elements to put in the cachemap
 # - CACHEDEPTH: How many layers of the search tree to cache
+# - FASTHASH: Use a less precise but faster hash function
 
 layout: layout.c
 	${CC} layout.c -olayout ${OPTFLAGS}

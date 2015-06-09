@@ -103,6 +103,7 @@ void initCache() {
 
 void printPlacedCubes(placed_cubes_t *cubes);
 
+#ifdef FASTHASH
 unsigned int hash(placed_cubes_t *cubes) {
   int h = (cubes->len * 1299721) % CACHEMAPSIZE;
   int i;
@@ -111,15 +112,37 @@ unsigned int hash(placed_cubes_t *cubes) {
   }
   return h % CACHEMAPSIZE;
 }
+#else
+unsigned int hash(placed_cubes_t *cubes) {
+  unsigned int h = (cubes->len * 1299721) % CACHEMAPSIZE;
+  int i, j, cur;
+  int last = -1;
+  for(i = 0; i < cubes->len; i++) {
+    for(cur = 0; cur < cubes->len; cur++)
+      if(cubes->cubes[cur].coord > last)
+        break;
 
+    for(j = cur; j < cubes->len; j++) {
+      if(cubes->cubes[j].coord > last && cubes->cubes[j].coord < cubes->cubes[cur].coord)
+        cur = j;
+    }
+    h = (h * 7927 + (cubes->cubes[i].dim * 101) + cubes->cubes[i].coord) % CACHEMAPSIZE;
+  }
+  return h;
+}
+#endif
+
+long long int cacheConflicts = 0;
+long long int cacheLoad = 0;
 void addToCache() {
   int i;
-  //printf("Added to cache %d: ", cachetail);
-  //printPlacedCubes(&placedCubes);
 
   unsigned int h = hash(&placedCubes);
+  //printf("Added to cache %d (%lld): ", h, cacheLoad);
+  //printPlacedCubes(&placedCubes);
   while(cachemap[h]) {
     //printf("Conflict on %d\n", h);
+    cacheConflicts++;
     h++;
     if(h > CACHEMAPSIZE)
       h = 0;
@@ -132,6 +155,7 @@ void addToCache() {
     cache[cachetail++] = placedCubes.cubes[i].dim;
     cache[cachetail++] = placedCubes.cubes[i].coord;
   }
+  cacheLoad++;
 }
 
 void printPlacedCubes(placed_cubes_t *cubes) {
@@ -161,7 +185,7 @@ int checkCacheElement(placed_cubes_t *cubes, int e) {
 }
 
 int checkCacheRotation(placed_cubes_t *cubes) {
-  int h = hash(cubes);
+  unsigned int h = hash(cubes);
   while(cachemap[h]) {
     if(checkCacheElement(cubes, cachemap[h]))
       return 1;
@@ -448,6 +472,7 @@ void printProgress(int result) {
       fprintf(stderr, " %lld", counts[i][j]);
   }
   fprintf(stderr, "  %lld", counts[i][0]);
+  fprintf(stderr, "  %lld/%dM; %lld/%lldM; +%lld", cacheLoad, CACHEMAPSIZE / 1000000, cachetail, CACHESIZE / 1000000, cacheConflicts);
   fprintf(stderr, "\n");
 }
 
@@ -472,6 +497,7 @@ void buildHistograms(int index, int real) {
         printf(" %lld", counts[i][j]);
     }
     printf("  %lld", counts[i][0]);
+    printf("  %lld/%dM; %lld/%lldM; +%lld", cacheLoad, CACHEMAPSIZE / 1000000, cachetail, CACHESIZE / 1000000, cacheConflicts);
     printf("\n");
     if(!isatty(STDOUT_FILENO))
       printProgress(result);
