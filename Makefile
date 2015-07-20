@@ -19,7 +19,7 @@ layout5: layout.c
 	${CC} layout.c -olayout5 ${OPTFLAGS} -DDIMENSION=5
 
 layout6: layout.c
-	${CC} layout.c -olayout6 ${OPTFLAGS} -DDIMENSION=6
+	${CC} layout.c -olayout6 ${OPTFLAGS} -DDIMENSION=6 -DCACHEDEPTH=6
 
 layout6timed: layout.c
 	${CC} layout.c -olayout6timed ${OPTFLAGS} -DDIMENSION=6 -DTIMELIMIT=600 -DCACHEDEPTH=4
