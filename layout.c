@@ -338,10 +338,13 @@ void removeCube(int c, int dim) {
 
 long long counts[MAXDIMENSION + 1][1 << (MAXDIMENSION - 2)];
 
+int real;
+long long displayTotal;
+
 // - index: which histogram index
 // - count: which element within this histogram index
 // - d: current dimension index
-int buildLayout(int index, int count, int d, int c, int depth) {
+int buildLayout(int index, int count, int d, int c) {
   int dim = dims[global_dim - index][d];
   int b, i, success = 0;
 
@@ -349,6 +352,13 @@ int buildLayout(int index, int count, int d, int c, int depth) {
 
   //printf("Entering %d %d %d (%d)\n", index, count, d, dim);
   //printLayout();
+
+#ifdef DISPLAYDEPTH
+  if(placedCubes.len == DISPLAYDEPTH && real) {
+    long long now = runningTime();
+    fprintf(stderr, "%6lld.%03lld %lld/%lld %lld +%lld\033[1A\n", now / 1000000, (now / 1000) % 1000, counts[index][count], displayTotal, cacheLoad, cacheConflicts);
+  }
+#endif
 
 #ifdef TIMELIMIT
   // Tradeoff accuracy for less time wasted checking
@@ -381,6 +391,9 @@ int buildLayout(int index, int count, int d, int c, int depth) {
     return 0;
   }
 
+#ifdef DISPLAYDEPTH
+  if(real || placedCubes.len != DISPLAYDEPTH)
+#endif
   for(; c < ncells; c++) {
     //printf("Checking [%d %d]\n", c, dim);
     // Only consider cubes which are 0 in the dimension we're checking.
@@ -476,8 +489,8 @@ void printProgress(int result) {
   fprintf(stderr, "\n");
 }
 
-void buildHistograms(int index, int real) {
-  int i, j;
+void buildHistograms(int index) {
+  int i, j, c;
   if(index == global_dim) {
     if(!real) {
       total_histograms++;
@@ -486,6 +499,14 @@ void buildHistograms(int index, int real) {
     printHistogram();
     printf(": ");
     fflush(stdout);
+#ifdef DISPLAYDEPTH
+    real = 0;
+    startBuildLayout();
+    for(i = 0, c = DISPLAYDEPTH; i <= global_dim && c >= histogram[i]; i++)
+      c -= histogram[i];
+    displayTotal = counts[i][c];
+    real = 1;
+#endif
     int result = startBuildLayout();
     if(!result)
       printf("Failure");
@@ -507,7 +528,7 @@ void buildHistograms(int index, int real) {
   int total = histogram[index];
   histogram[index + 1] = 0;
   while(histogram[index] >= 0) {
-    buildHistograms(index + 1, real);
+    buildHistograms(index + 1);
     histogram[index]--;
     histogram[index + 1] += 2;
   }
@@ -550,15 +571,18 @@ int main(int argc, char **argv) {
   if(histargs) {
     for(i = 0; i <= global_dim; i++)
       histogram[i] = atoi(argv[i + histargs]);
-    buildHistograms(global_dim, 1);
+    real = 1;
+    buildHistograms(global_dim);
     return 0;
   }
   histogram[0] = 1;
   for(i = 1; i <= global_dim; i++)
     histogram[i] = 0;
 
-  buildHistograms(0, 0);
-  buildHistograms(0, 1);
+  real = 0;
+  buildHistograms(0);
+  real = 1;
+  buildHistograms(0);
   fprintf(stderr, "Rotations checked: %d\n", nrotationsChecked);
 
   return 0;
