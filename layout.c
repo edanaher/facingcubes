@@ -341,7 +341,7 @@ long long counts[MAXDIMENSION + 1][1 << (MAXDIMENSION - 2)];
 // - index: which histogram index
 // - count: which element within this histogram index
 // - d: current dimension index
-int buildLayout(int index, int count, int d, int c) {
+int buildLayout(int index, int count, int d, int c, int depth) {
   int dim = dims[global_dim - index][d];
   int b, i, success = 0;
 
