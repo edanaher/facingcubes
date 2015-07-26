@@ -341,124 +341,15 @@ long long counts[MAXDIMENSION + 1][1 << (MAXDIMENSION - 2)];
 int real;
 long long displayTotal;
 
-// - index: which histogram index
-// - count: which element within this histogram index
-// - d: current dimension index
-int buildLayout(int index, int count, int d, int c) {
-  int dim = dims[global_dim - index][d];
-  int b, i, success = 0;
+#define LAYOUTNAME
+#include "buildlayout.c"
+#undef LAYOUTNAME
 
-  counts[index][count]++;
-
-  //printf("Entering %d %d %d (%d)\n", index, count, d, dim);
-  //printLayout();
-
-#ifdef DISPLAYDEPTH
-  if(placedCubes.len == DISPLAYDEPTH && real) {
-    long long now = runningTime();
-    fprintf(stderr, "%6lld.%03lld %lld/%lld %lld +%lld\033[1A\n", now / 1000000, (now / 1000) % 1000, counts[index][count], displayTotal, cacheLoad, cacheConflicts);
-  }
-#endif
-
-#ifdef TIMELIMIT
-  // Tradeoff accuracy for less time wasted checking
-  if(++hist_timeout_counter > 1000000 * TIMELIMIT) {
-    //fprintf(stderr, "bail: %lld/%lld\n", runningTime(), global_hist_timeout);
-    if(runningTime() > global_hist_timeout)
-      return -1;
-    hist_timeout_counter = 0;
-  }
-#endif
-
-  if(count == histogram[index]) { // Placed all of this index
-    //printf("Final check...\n");
-    if(index == global_dim - 1) { // Placed all indices except zero-dimensional; check those!
-      counts[index+1][0]++;
-      for(c = 0; c < ncells; c++)
-        if(!cellUsed[c])
-          for(b = 1; b < ncells; b <<= 1)
-            if(!cellUsed[c ^ b]) { // There's an adjacent (face-aligned) 0-cell; this fails.
-              //printf("Final check failed: %d %d\n", c, c^b);
-              return 0;
-            }
-      printf("Success: ");
-      printLayout();
-      return 1;
-    } else { // Not finished; start next index
-      return buildLayout(index + 1, 0, 1, 0);
-    }
-  } else if(d > dims[global_dim - index][0]) { // Out of dimensions for this index; give up.
-    return 0;
-  }
-
-#ifdef DISPLAYDEPTH
-  if(real || placedCubes.len != DISPLAYDEPTH)
-#endif
-  for(; c < ncells; c++) {
-    //printf("Checking [%d %d]\n", c, dim);
-    // Only consider cubes which are 0 in the dimension we're checking.
-    if(c & dim)
-      continue;
-    //printf("Checked [%d %d]: %d\n", c, dim, cellBlocked[dim][c]);
-
-    // Shortcut if the cell itself is used or it would be face-aligned in this dimension.
-    if(cellUsed[c] || cellBlocked[dim][c])
-      continue;
-
-    // For each cell, if it differs from c only by dimensions in dim, it's in
-    // the cube.  If it's occupied, then this position won't work.
-    for(i = 0; dimoffsets[dim][i]; i++)
-      if(cellUsed[c + dimoffsets[dim][i]])
-        break;
-    if(dimoffsets[dim][i])
-      continue;
-
-    // Now we know this cube is safe.  Let's go!
-    placeCube(c, dim, index);
-    //printf("Placed cube %d %d %d\n", index, dim, c);
-    if(placedCubes.len <= CACHEDEPTH) {
-      if(checkCache()) { // Already saw it, must have failed.
-        //printf("cached\n");
-        removeCube(c, dim);
-        continue;
-      }
-      addToCache();
-    }
-    success = buildLayout(index, count + 1, d, c + 1);
-    removeCube(c, dim);
-
-    //printf("Leaving\n");
-    //printLayout();
-    if(success)
-      return success;
-  }
-
-  // Finally, let's consider this dimension finished and try the next one:
-  return buildLayout(index, count, d + 1, 0);
-}
-
-int startBuildLayout() {
-  int i, j;
-  int index;
-#ifdef TIMELIMIT
-  global_hist_timeout = runningTime() + TIMELIMIT * 1000000;
-#endif
-  for(i = 0; i < global_dim; i++)
-    for(j = 0; j < histogram[i]; j++)
-      counts[i][j] = 0;
-  counts[global_dim][0] = 0;
-  cachetail = 1;
-  // This is sparse, so it's faster to free and re-alloc than to zero out.
-  free(cachemap);
-  cachemap = calloc(CACHEMAPSIZE, sizeof(unsigned long long));
-  for(index = 0; !histogram[index]; index++);
-  if(index == global_dim) // Don't add a simple cube; it makes things sad.
-    return buildLayout(index - 1, 0, 1, 0);
-  placeCube(0, dims[global_dim - index][1], index);
-  int success = buildLayout(index, 1, 1, 1);
-  removeCube(0, dims[global_dim - index][1]);
-  return success;
-}
+#define LAYOUTNAME Count
+#define ONLYCOUNT
+#include "buildlayout.c"
+#undef ONLYCOUNT
+#undef LAYOUTNAME
 
 void printHistogram() {
   int i;
@@ -471,7 +362,7 @@ int total_histograms = 0;
 void printProgress(int result) {
   int i, j;
   long long now = runningTime();
-  fprintf(stderr, "%6lld.%03lld %d/%d  ", now / 1000000, (now / 1000) % 1000, ++global_progress, total_histograms);
+  fprintf(stderr, "\n%6lld.%03lld %d/%d  ", now / 1000000, (now / 1000) % 1000, ++global_progress, total_histograms);
   for(i = 0; i <= global_dim; i++)
     fprintf(stderr, "%d ", histogram[i]);
   switch(result) {
@@ -500,12 +391,13 @@ void buildHistograms(int index) {
     printf(": ");
     fflush(stdout);
 #ifdef DISPLAYDEPTH
-    real = 0;
-    startBuildLayout();
+    startBuildLayoutCount();
+    fprintf(stderr, "\n");
+    cacheLoad = 0;
+    cacheConflicts = 0;
     for(i = 0, c = DISPLAYDEPTH; i <= global_dim && c >= histogram[i]; i++)
       c -= histogram[i];
     displayTotal = counts[i][c];
-    real = 1;
 #endif
     int result = startBuildLayout();
     if(!result)
