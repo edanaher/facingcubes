@@ -1,5 +1,7 @@
 #define concat(x,y) x ## y
+#define concat3(x,y,z) x ## y ## z
 #define buildLayoutName(x) concat(buildLayout, x)
+#define buildLayoutNameSuffix(x,y) concat3(buildLayout, x, y)
 #define startBuildLayoutName(x) concat(startBuildLayout, x)
 
 // - index: which histogram index
@@ -14,11 +16,15 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
   //printf("Entering %d %d %d (%d)\n", index, count, d, dim);
   //printLayout();
 
-#ifdef DISPLAYDEPTH
+#if defined(DISPLAYDEPTH) && !defined(NODISPLAY)
 #ifndef ONLYCOUNT
   if(placedCubes.len == DISPLAYDEPTH) {
     long long now = runningTime();
     fprintf(stderr, "%6lld.%03lld %lld/%lld (%lld +%lld)\033[1A\n", now / 1000000, (now / 1000) % 1000, counts[index][count], displayTotal, cacheLoad, cacheConflicts);
+  }
+  if(placedCubes.len > DISPLAYDEPTH) {
+    counts[index][count]--;
+    return buildLayoutNameSuffix(LAYOUTNAME,NoDisplay)(index, count, d, c);
   }
 #else
   if(placedCubes.len == DISPLAYDEPTH) {
@@ -29,6 +35,8 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
   }
 #endif
 #endif
+
+
 
 #ifdef TIMELIMIT
   // Tradeoff accuracy for less time wasted checking
@@ -71,7 +79,7 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
     return 0;
   }
 
-#ifdef DISPLAYDEPTH
+#if defined(DISPLAYDEPTH) && !defined(NODISPLAY)
 #ifdef ONLYCOUNT
   if(placedCubes.len != DISPLAYDEPTH)
 #endif

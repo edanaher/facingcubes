@@ -373,6 +373,14 @@ long long displayTotal;
 #undef ONLYCOUNT
 #undef LAYOUTNAME
 
+#ifdef DISPLAYDEPTH
+#define LAYOUTNAME NoDisplay
+#define NODISPLAY
+#include "buildlayout.c"
+#undef NODISPLAY
+#undef LAYOUTNAME
+#endif
+
 void printHistogram() {
   int i;
   for(i = 0; i <= global_dim; i++)
