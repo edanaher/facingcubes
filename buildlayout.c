@@ -41,19 +41,13 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
 #endif
 
   if(checkTilingAt[index][count]) {
-    for(c = 0; c < ncells; c++)
-      if(!cellIsUsed(c)) {
-        for(b = 1; b < ncells; b <<= 1)
-          if(!cellIsUsed(c ^ b)) { // There's an adjacent (face-aligned) 0-cell; this fails.
-            break;
-          }
-        if(b != ncells)
-          break;
-      }
-    if(c == ncells) {
+    for(b = 0; b < global_dim; b++)
+      if(((~cellUsed) >> (1 << b)) & (~cellUsed) & dimoverlapchecks[b])
+        break;
+    if(b == global_dim) {
       printf("\nindex/count: %d/%d\n", index, count);
       printf("Success: ");
-      printLayout(index, count);
+      printLayout();
       printf("\n");
       checkTilingAt[index][count] = 0;
       int keepGoing = 0;

@@ -41,6 +41,10 @@ int dims[MAXDIMENSION + 1][MAXDIMENSION * MAXDIMENSION];
 // store the offsets within each dimension; e.g., 6 is 0, 2, 4, 6 => 0b1010101, 1 is 0, 1 => 0b11
 long long dimoffsets[1 << MAXDIMENSION];
 
+// masks to check each dimension for unused cubes; bit n of dim d is set if n is a multiple of (1 << d)
+// Combined with cellUsed, this allows O(dimensions) check for adjacent unused cells.
+long long dimoverlapchecks[MAXDIMENSION];
+
 // Have we found a match at this dimension?
 int checkTilingAt[MAXDIMENSION + 1][1 << (MAXDIMENSION - 2)];
 
@@ -273,6 +277,17 @@ void arrangeDims() {
         dimoffsets[i] |= (1LL << j);
     //printf("%d => %llx\n", i, dimoffsets[i]);
   }
+
+  // These are the "relevant" bits after shifting cellUsed right by (i << dim)
+  // and anding with itself.
+  // I admit the logic is terrifying, but it is correct if you think about it.
+  // Bit fields are strange like this.
+  for(i = 0; i < global_dim; i++)
+    for(j = 0; j < ncells; j++)
+      if(!(j & (1LL << i)))
+        dimoverlapchecks[i] |= (1LL << j);
+  /*for(i = 0; i < global_dim; i++)
+    printf("%llx\n", dimoverlapchecks[i]);*/
   /*for(i = 0; i <= global_dim; i++) {
     printf("index %d:", i);
     int j;
