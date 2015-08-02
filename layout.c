@@ -298,10 +298,18 @@ int cellBlocked[1 << MAXDIMENSION][1 << MAXDIMENSION];
 
 // This is a bit slow, but it avoids bookkeeping when building, which is far more important.
 void printLayout() {
-  int i;
-  for(i = 0; i < ncells; i++)
-    if(!(i & cellUsed[i]))
-      printf("[%d %d] ", i, cellUsed[i]);
+  int i, j;
+  for(i = 0; i < ncells; i++) {
+    for(j = 0; j < placedCubes.len; j++)
+      if(placedCubes.cubes[j].coord == i)
+        printf("[%d %d] ", i, placedCubes.cubes[j].dim);
+    for(j = 0; j < placedCubes.len; j++) {
+      if(placedCubes.cubes[j].coord == (i & ~placedCubes.cubes[j].dim))
+        break;
+    }
+    if(j == placedCubes.len)
+        printf("[%d %d] ", i, 0);
+  }
   for(i = 0; i < placedCubes.len; i++)
     printf("{%d %d %d} ", placedCubes.cubes[i].index, placedCubes.cubes[i].dim, placedCubes.cubes[i].coord);
   //printf("\n");
