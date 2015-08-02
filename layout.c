@@ -291,7 +291,8 @@ void arrangeDims() {
 }
 
 // If the cell is in a cube
-int cellUsed[1 << MAXDIMENSION];
+long long cellUsed;
+#define cellIsUsed(c) (cellUsed & (1LL << (c)))
 
 // cellBlocked[dim][c]: 1 if there is a cube adjacent to c in dim dim (i.e., it would be face-aligned).
 int cellBlocked[1 << MAXDIMENSION][1 << MAXDIMENSION];
@@ -320,9 +321,9 @@ void printHistogram();
 void placeCube(int c, int dim, int index) {
   int i, b;
   // This cell and all cells in the cube are used.
-  cellUsed[c] = dim;
+  cellUsed |= 1LL << c;
   for(i = 0; dimoffsets[dim][i]; i++)
-    cellUsed[c + dimoffsets[dim][i]] = dim;
+    cellUsed |= 1LL << c + dimoffsets[dim][i];
 
   // And its adjacent cubes in this dimension as bad.
   for(b = 1; b < ncells; b <<= 1)
@@ -337,9 +338,9 @@ void placeCube(int c, int dim, int index) {
 void removeCube(int c, int dim) {
   int i, b;
   // This cell and all cells in the cube are now unused.
-  cellUsed[c] = 0;
+  cellUsed &= ~(1LL << c);
   for(i = 0; dimoffsets[dim][i]; i++)
-    cellUsed[c + dimoffsets[dim][i]] = 0;
+    cellUsed &= ~(1LL << c + dimoffsets[dim][i]);
 
   // And its adjacent cubes in this dimension are less bad.
   for(b = 1; b < ncells; b <<= 1)

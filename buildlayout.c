@@ -42,9 +42,9 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
 
   if(checkTilingAt[index][count]) {
     for(c = 0; c < ncells; c++)
-      if(!cellUsed[c]) {
+      if(!cellIsUsed(c)) {
         for(b = 1; b < ncells; b <<= 1)
-          if(!cellUsed[c ^ b]) { // There's an adjacent (face-aligned) 0-cell; this fails.
+          if(!cellIsUsed(c ^ b)) { // There's an adjacent (face-aligned) 0-cell; this fails.
             break;
           }
         if(b != ncells)
@@ -90,13 +90,13 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
     //printf("Checked [%d %d]: %d\n", c, dim, cellBlocked[dim][c]);
 
     // Shortcut if the cell itself is used or it would be face-aligned in this dimension.
-    if(cellUsed[c] || cellBlocked[dim][c])
+    if(cellIsUsed(c) || cellBlocked[dim][c])
       continue;
 
     // For each cell, if it differs from c only by dimensions in dim, it's in
     // the cube.  If it's occupied, then this position won't work.
     for(i = 0; dimoffsets[dim][i]; i++)
-      if(cellUsed[c + dimoffsets[dim][i]])
+      if(cellIsUsed(c + dimoffsets[dim][i]))
         break;
     if(dimoffsets[dim][i])
       continue;
