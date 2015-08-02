@@ -12,16 +12,16 @@ OPTFLAGS=-O3 ${CFLAGS}
 # - FASTHASH: Use a less precise but faster hash function
 # - DISPLAYDEPTH: How deep to go for display purposes
 
-layout: layout.c
+layout: layout.c buildlayout.c
 	${CC} layout.c -olayout ${OPTFLAGS}
 
-layout5: layout.c
+layout5: layout.c buildlayout.c
 	${CC} layout.c -olayout5 ${OPTFLAGS} -DDIMENSION=5
 
-layout6: layout.c
-	${CC} layout.c -olayout6 ${OPTFLAGS} -DDIMENSION=6 -DCACHEDEPTH=6
+layout6: layout.c buildlayout.c
+	${CC} layout.c -olayout6 -g -DDIMENSION=6 -DCACHEDEPTH=6
 
-layout6timed: layout.c
+layout6timed: layout.c buildlayout.c
 	${CC} layout.c -olayout6timed ${OPTFLAGS} -DDIMENSION=6 -DTIMELIMIT=600 -DCACHEDEPTH=4
 
 # Compile flags:
