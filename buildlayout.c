@@ -95,10 +95,7 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
 
     // For each cell, if it differs from c only by dimensions in dim, it's in
     // the cube.  If it's occupied, then this position won't work.
-    for(i = 0; dimoffsets[dim][i]; i++)
-      if(cellIsUsed(c + dimoffsets[dim][i]))
-        break;
-    if(dimoffsets[dim][i])
+    if(cellUsed & (dimoffsets[dim] << c))
       continue;
 
     // Now we know this cube is safe.  Let's go!

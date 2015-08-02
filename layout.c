@@ -38,8 +38,8 @@ int histogram[MAXDIMENSION + 1];
 // usual trick where first element is length
 int dims[MAXDIMENSION + 1][MAXDIMENSION * MAXDIMENSION];
 
-// store the offsets within each dimension; e.g., 6 is 2, 4, 6
-int dimoffsets[1 << MAXDIMENSION][1 + (1 << MAXDIMENSION)];
+// store the offsets within each dimension; e.g., 6 is 0, 2, 4, 6 => 0b1010101, 1 is 0, 1 => 0b11
+long long dimoffsets[1 << MAXDIMENSION];
 
 // Have we found a match at this dimension?
 int checkTilingAt[MAXDIMENSION + 1][1 << (MAXDIMENSION - 2)];
@@ -268,11 +268,10 @@ void arrangeDims() {
       if(i & (1 << b))
         ones++;
     dims[ones][++dims[ones][0]] = i;
-    int n = 0;
-    for(j = 1; j < ncells; j++)
+    for(j = 0; j < ncells; j++)
       if(!(j & ~i))
-        dimoffsets[i][n++] = j;
-    //printf("%d => %d\n", i, ones);
+        dimoffsets[i] |= (1LL << j);
+    //printf("%d => %llx\n", i, dimoffsets[i]);
   }
   /*for(i = 0; i <= global_dim; i++) {
     printf("index %d:", i);
@@ -321,9 +320,7 @@ void printHistogram();
 void placeCube(int c, int dim, int index) {
   int i, b;
   // This cell and all cells in the cube are used.
-  cellUsed |= 1LL << c;
-  for(i = 0; dimoffsets[dim][i]; i++)
-    cellUsed |= 1LL << c + dimoffsets[dim][i];
+  cellUsed |= dimoffsets[dim] << c;
 
   // And its adjacent cubes in this dimension as bad.
   for(b = 1; b < ncells; b <<= 1)
@@ -338,9 +335,7 @@ void placeCube(int c, int dim, int index) {
 void removeCube(int c, int dim) {
   int i, b;
   // This cell and all cells in the cube are now unused.
-  cellUsed &= ~(1LL << c);
-  for(i = 0; dimoffsets[dim][i]; i++)
-    cellUsed &= ~(1LL << c + dimoffsets[dim][i]);
+  cellUsed &= ~(dimoffsets[dim] << c);
 
   // And its adjacent cubes in this dimension are less bad.
   for(b = 1; b < ncells; b <<= 1)
