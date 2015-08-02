@@ -7,7 +7,7 @@
 // - d: current dimension index
 int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
   int dim = dims[global_dim - index][d];
-  int b, i, success = 0;
+  int b, i, j, success = 0;
 
   counts[index][count]++;
 
@@ -40,23 +40,39 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
   }
 #endif
 
-  if(count == histogram[index]) { // Placed all of this index
-    //printf("Final check...\n");
-    if(index == global_dim - 1) { // Placed all indices except zero-dimensional; check those!
-      counts[index+1][0]++;
-      for(c = 0; c < ncells; c++)
-        if(!cellUsed[c])
-          for(b = 1; b < ncells; b <<= 1)
-            if(!cellUsed[c ^ b]) { // There's an adjacent (face-aligned) 0-cell; this fails.
-              //printf("Final check failed: %d %d\n", c, c^b);
-              return 0;
-            }
+  if(checkTilingAt[index][count]) {
+    for(c = 0; c < ncells; c++)
+      if(!cellUsed[c]) {
+        for(b = 1; b < ncells; b <<= 1)
+          if(!cellUsed[c ^ b]) { // There's an adjacent (face-aligned) 0-cell; this fails.
+            break;
+          }
+        if(b != ncells)
+          break;
+      }
+    if(c == ncells) {
+      printf("\nindex/count: %d/%d\n", index, count);
       printf("Success: ");
-      printLayout();
-      return 1;
+      printLayout(index, count);
+      printf("\n");
+      checkTilingAt[index][count] = 0;
+      int keepGoing = 0;
+      for(i = 0; i < global_dim; i++)
+        for(j = 0; j < histogram[i]; j++) {
+          if(checkTilingAt[i][j])
+            keepGoing = 1;
+        }
+      if(!keepGoing && !checkTilingAt[global_dim - 1][histogram[global_dim - 1]])
+        return 1;
+    }
+  }
+
+  if(count == histogram[index]) { // Placed all of this index
+    if(index == global_dim - 1) { // Placed all indices except zero-dimensional; check those!
     } else { // Not finished; start next index
       return buildLayoutName(LAYOUTNAME)(index + 1, 0, 1, 0);
     }
+    return 0;
   } else if(d > dims[global_dim - index][0]) { // Out of dimensions for this index; give up.
     return 0;
   }
@@ -116,8 +132,11 @@ int startBuildLayoutName(LAYOUTNAME)() {
   global_hist_timeout = runningTime() + TIMELIMIT * 1000000;
 #endif
   for(i = 0; i < global_dim; i++)
-    for(j = 0; j < histogram[i]; j++)
+    for(j = 0; j < histogram[i]; j++) {
       counts[i][j] = 0;
+      checkTilingAt[i][j] = 1;
+    }
+  checkTilingAt[global_dim - 1][histogram[global_dim - 1]] = 1;
   counts[global_dim][0] = 0;
   cachetail = 1;
   // This is sparse, so it's faster to free and re-alloc than to zero out.

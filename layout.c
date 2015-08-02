@@ -41,6 +41,9 @@ int dims[MAXDIMENSION + 1][MAXDIMENSION * MAXDIMENSION];
 // store the offsets within each dimension; e.g., 6 is 2, 4, 6
 int dimoffsets[1 << MAXDIMENSION][1 + (1 << MAXDIMENSION)];
 
+// Have we found a match at this dimension?
+int checkTilingAt[MAXDIMENSION + 1][1 << (MAXDIMENSION - 2)];
+
 // All permutations of up to global_dim elements; used for rotations.
 int npermutations;
 int permutations[7*720][MAXDIMENSION];
