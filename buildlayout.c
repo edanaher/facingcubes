@@ -48,10 +48,7 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
   }
 #endif
 
-  if(checkTilingAt[index][count] == 2)
-    return 0;
-
-  if(!checkTilingAt[index][count]) {
+  if(checkTilingAt[index][count]) {
     for(b = 0; b < global_dim; b++)
       if(((~cellUsed) >> (1 << b)) & (~cellUsed) & dimoverlapchecks[b])
         break;
@@ -60,21 +57,15 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
       printf("Success: ");
       printLayout();
       printf("\n");
-      checkTilingAt[index][count] = 1;
-      //printf("Cutting checking %d/%d; was %d\n", index + 1, 0, checkTilingAt[index+1][0]);
-      for(i = index + 1, j = 0; checkTilingAt[i][j] == 2; ) {
-        //printf("Cutting checking %d/%d; was\n", i, j);
-        if(--j < 0) {
-          if(--i < 0)
-            break;
-          j = histogram[index];
+      checkTilingAt[index][count] = 0;
+      int keepGoing = 0;
+      for(i = 0; i < global_dim; i++)
+        for(j = 0; j < histogram[i]; j++) {
+          if(checkTilingAt[i][j])
+            keepGoing = 1;
         }
-        //printf("Maybe cutting out %d/%d; was %d\n", i, j, checkTilingAt[i][j]);
-        if(!checkTilingAt[i][j])
-          break;
-        //printf("Cutting out %d/%d; was %d\n", i, j, checkTilingAt[i][j]);
-        checkTilingAt[i][j] = 2;
-      }
+      if(!keepGoing && !checkTilingAt[global_dim - 1][histogram[global_dim - 1]])
+        return 1;
     }
   }
 
@@ -142,10 +133,9 @@ int startBuildLayoutName(LAYOUTNAME)() {
   for(i = 0; i < global_dim; i++)
     for(j = 0; j < histogram[i]; j++) {
       counts[i][j] = 0;
-      checkTilingAt[i][j] = 0;
+      checkTilingAt[i][j] = 1;
     }
-  checkTilingAt[global_dim - 1][histogram[global_dim - 1]] = 0;
-  checkTilingAt[global_dim][0] = 2;
+  checkTilingAt[global_dim - 1][histogram[global_dim - 1]] = 1;
   counts[global_dim][0] = 0;
   cachetail = 1;
   // This is sparse, so it's faster to free and re-alloc than to zero out.
