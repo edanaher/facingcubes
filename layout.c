@@ -340,7 +340,6 @@ void printLayout() {
 void printHistogram();
 
 void placeCube(int c, int dim, int index) {
-  int i, b;
   // This cell and all cells in the cube are used.
   cellUsed |= dimoffsets[dim] << c;
 
@@ -354,7 +353,6 @@ void placeCube(int c, int dim, int index) {
 }
 
 void removeCube(int c, int dim) {
-  int i, b;
   // This cell and all cells in the cube are now unused.
   cellUsed &= ~(dimoffsets[dim] << c);
 
@@ -368,6 +366,14 @@ long long counts[MAXDIMENSION + 1][1 << (MAXDIMENSION - 2)];
 
 int real;
 long long displayTotal;
+
+
+int buildLayoutNoCache(int index, int count, int d, int c);
+#ifdef DISPLAYDEPTH
+int buildLayoutNoDisplay(int index, int count, int d, int c);
+int buildLayoutNoCacheNoDisplay(int index, int count, int d, int c);
+int buildLayoutNoDisplayNoCache(int index, int count, int d, int c);
+#endif
 
 #define LAYOUTNAME
 #include "buildlayout.c"
@@ -435,7 +441,7 @@ void printProgress(int result) {
 }
 
 void buildHistograms(int index) {
-  int i, j, c;
+  int i, j;
   if(index == global_dim) {
     if(!real) {
       total_histograms++;
@@ -445,6 +451,7 @@ void buildHistograms(int index) {
     printf(": ");
     fflush(stdout);
 #ifdef DISPLAYDEPTH
+    int c;
     startBuildLayoutCount();
     fprintf(stderr, "\n");
     cacheLoad = 0;
