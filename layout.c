@@ -45,6 +45,9 @@ long long dimoffsets[1 << MAXDIMENSION];
 // Combined with cellUsed, this allows O(dimensions) check for adjacent unused cells.
 long long dimoverlapchecks[MAXDIMENSION];
 
+// Adjacent cubes which will block it in shared dimensions.
+long long adjacentCells[1 << MAXDIMENSION];
+
 // All permutations of up to global_dim elements; used for rotations.
 int npermutations;
 int permutations[7*720][MAXDIMENSION];
@@ -283,6 +286,13 @@ void arrangeDims() {
     for(j = 0; j < ncells; j++)
       if(!(j & (1LL << i)))
         dimoverlapchecks[i] |= (1LL << j);
+
+  for(i = 0; i < ncells; i++)
+    for(b = 1; b < ncells; b <<= 1)
+      adjacentCells[i] |= (1LL << (i ^ b));
+
+  /*for(i = 0; i < ncells; i++)
+    printf("%d: %llx\n", i, adjacentCells[i]);*/
   /*for(i = 0; i < global_dim; i++)
     printf("%llx\n", dimoverlapchecks[i]);*/
   /*for(i = 0; i <= global_dim; i++) {
@@ -305,8 +315,8 @@ void arrangeDims() {
 long long cellUsed;
 #define cellIsUsed(c) (cellUsed & (1LL << (c)))
 
-// cellBlocked[dim][c]: 1 if there is a cube adjacent to c in dim dim (i.e., it would be face-aligned).
-int cellBlocked[1 << MAXDIMENSION][1 << MAXDIMENSION];
+// cellUsedByDim[dim]: Track cells used in each dimension to avoid faceing cubes.
+long long cellUsedByDim[1 << MAXDIMENSION];
 
 // This is a bit slow, but it avoids bookkeeping when building, which is far more important.
 void printLayout() {
@@ -334,9 +344,8 @@ void placeCube(int c, int dim, int index) {
   // This cell and all cells in the cube are used.
   cellUsed |= dimoffsets[dim] << c;
 
-  // And its adjacent cubes in this dimension as bad.
-  for(b = 1; b < ncells; b <<= 1)
-    cellBlocked[dim][c ^ b]++;
+  // And it's used in dim, for checking adjacent cubes in dim.
+  cellUsedByDim[dim] |= (1LL << c);
 
   placedCubes.cubes[placedCubes.len].index = index;
   placedCubes.cubes[placedCubes.len].dim = dim;
@@ -349,9 +358,9 @@ void removeCube(int c, int dim) {
   // This cell and all cells in the cube are now unused.
   cellUsed &= ~(dimoffsets[dim] << c);
 
-  // And its adjacent cubes in this dimension are less bad.
-  for(b = 1; b < ncells; b <<= 1)
-    cellBlocked[dim][c ^ b]--;
+  // And it's no longer used in dim, for checking adjacent cubes in dim.
+  cellUsedByDim[dim] &= ~(1LL << c);
+
   placedCubes.len--;
 }
 

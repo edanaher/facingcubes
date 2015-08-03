@@ -83,7 +83,7 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
     //printf("Checked [%d %d]: %d\n", c, dim, cellBlocked[dim][c]);
 
     // Shortcut if the cell itself is used or it would be face-aligned in this dimension.
-    if(cellIsUsed(c) || cellBlocked[dim][c])
+    if(cellIsUsed(c) || cellUsedByDim[dim] & adjacentCells[c])
       continue;
 
     // For each cell, if it differs from c only by dimensions in dim, it's in
