@@ -52,6 +52,9 @@ long long adjacentCells[1 << MAXDIMENSION];
 int npermutations;
 int permutations[7*720][MAXDIMENSION];
 
+// Actually, let's just store each permutation of each potential value...
+int rotates[7*720][1 << MAXDIMENSION];
+
 typedef struct {
   int index;
   int dim;
@@ -71,7 +74,7 @@ unsigned long long cachetail;
 unsigned long long *cachemap;
 
 void initPermutations() {
-  int d, i, b;
+  int d, i, b, p;
   int nsofar = 1;
   for(i = 0; i < global_dim; i++)
     permutations[0][i] = i;
@@ -86,6 +89,14 @@ void initPermutations() {
     nsofar *= (d + 1);
   }
   npermutations = nsofar;
+
+  for(p = 0; p < npermutations; p++)
+    for(i = 0; i < ncells; i++) {
+      rotates[p][i] = 0;
+      for(b = 0; b < global_dim; b++)
+        rotates[p][i] |= ((i >> b) & 1) << permutations[p][b];
+    }
+
   /*for(d = 0; d < npermutations; d++) {
     for(i = 0; i < global_dim; i++)
       printf("%d ", permutations[d][i]);
@@ -201,14 +212,6 @@ int checkCacheRotation(placed_cubes_t *cubes) {
   return 0;
 }
 
-int rotate(int n, int perm) {
-  int r = 0;
-  int b;
-  for(b = 0; b < global_dim; b++)
-    r |= ((n >> b) & 1) << permutations[perm][b];
-  return r;
-}
-
 int nrotationsChecked = 0;
 int checkCache() {
   int flip_dims = 0, netFlipper = 0;
@@ -219,8 +222,8 @@ int checkCache() {
   for(perm = 0; perm < npermutations; perm++) {
     for(i = 0; i < placedCubes.len; i++) {
       cubes.cubes[i].index = placedCubes.cubes[i].index;
-      cubes.cubes[i].dim = rotate(placedCubes.cubes[i].dim, perm);
-      cubes.cubes[i].coord = rotate(placedCubes.cubes[i].coord, perm);
+      cubes.cubes[i].dim = rotates[perm][placedCubes.cubes[i].dim];
+      cubes.cubes[i].coord = rotates[perm][placedCubes.cubes[i].coord];
     }
 
     //printf("Rotation: ");
