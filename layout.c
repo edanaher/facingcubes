@@ -504,6 +504,8 @@ void buildHistograms(int index) {
     startBuildLayoutCount();
     fprintf(stderr, "\n");
     cacheLoad = 0;
+    nrotationsChecked = 0;
+    ncacheHits = 0;
     cacheConflicts = 0;
     for(i = 0, c = DISPLAYDEPTH; i <= global_dim && c >= histogram[i]; i++)
       c -= histogram[i];
