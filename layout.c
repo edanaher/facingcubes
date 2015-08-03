@@ -370,12 +370,30 @@ long long displayTotal;
 #undef ONLYCOUNT
 #undef LAYOUTNAME
 
-#ifdef DISPLAYDEPTH
-#define LAYOUTNAME NoDisplay
-#define NODISPLAY
+#define LAYOUTNAME NoCache
+#define NOCACHE
 #include "buildlayout.c"
-#undef NODISPLAY
+#undef NOCACHE
 #undef LAYOUTNAME
+
+#ifdef DISPLAYDEPTH
+#define NODISPLAY
+
+#define LAYOUTNAME NoDisplay
+#include "buildlayout.c"
+#undef LAYOUTNAME
+
+// Ew... this will rapidly explode.
+#define NOCACHE
+#define LAYOUTNAME NoDisplayNoCache
+#include "buildlayout.c"
+#undef LAYOUTNAME
+#define LAYOUTNAME NoCacheNoDisplay
+#include "buildlayout.c"
+#undef LAYOUTNAME
+#undef NOCACHE
+
+#undef NODISPLAY
 #endif
 
 void printHistogram() {

@@ -11,6 +11,11 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
   int dim = dims[global_dim - index][d];
   int b, i, success = 0;
 
+#if !defined(NOCACHE) && !defined(ONLYCOUNT)
+  if(placedCubes.len >= CACHEDEPTH)
+    return buildLayoutNameSuffix(LAYOUTNAME,NoCache)(index, count, d, c);
+#endif
+
   counts[index][count]++;
 
   //printf("Entering %d %d %d (%d)\n", index, count, d, dim);
@@ -35,8 +40,6 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
   }
 #endif
 #endif
-
-
 
 #ifdef TIMELIMIT
   // Tradeoff accuracy for less time wasted checking
@@ -91,14 +94,14 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
     // Now we know this cube is safe.  Let's go!
     placeCube(c, dim, index);
     //printf("Placed cube %d %d %d\n", index, dim, c);
-    if(placedCubes.len <= CACHEDEPTH) {
+#if !defined(NOCACHE)
       if(checkCache()) { // Already saw it, must have failed.
         //printf("cached\n");
         removeCube(c, dim);
         continue;
       }
       addToCache();
-    }
+#endif
     success = buildLayoutName(LAYOUTNAME)(index, count + 1, d, c + 1);
     removeCube(c, dim);
 
