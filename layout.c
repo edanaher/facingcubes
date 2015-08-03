@@ -45,9 +45,6 @@ long long dimoffsets[1 << MAXDIMENSION];
 // Combined with cellUsed, this allows O(dimensions) check for adjacent unused cells.
 long long dimoverlapchecks[MAXDIMENSION];
 
-// Have we found a match at this dimension?
-int checkTilingAt[MAXDIMENSION + 1][1 << (MAXDIMENSION - 2)];
-
 // All permutations of up to global_dim elements; used for rotations.
 int npermutations;
 int permutations[7*720][MAXDIMENSION];
