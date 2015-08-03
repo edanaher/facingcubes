@@ -11,7 +11,7 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
   int dim = dims[global_dim - index][d];
   int b, success = 0;
 
-#if !defined(NOCACHE) && !defined(ONLYCOUNT)
+#if !defined(NOCACHE)
   if(placedCubes.len >= CACHEDEPTH)
     return buildLayoutNameSuffix(LAYOUTNAME,NoCache)(index, count, d, c);
 #endif

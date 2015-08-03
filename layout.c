@@ -391,6 +391,7 @@ long long displayTotal;
 
 
 int buildLayoutNoCache(int index, int count, int d, int c);
+int buildLayoutCountNoCache(int index, int count, int d, int c);
 #ifdef DISPLAYDEPTH
 int buildLayoutNoDisplay(int index, int count, int d, int c);
 int buildLayoutNoCacheNoDisplay(int index, int count, int d, int c);
@@ -404,6 +405,14 @@ int buildLayoutNoDisplayNoCache(int index, int count, int d, int c);
 #define LAYOUTNAME Count
 #define ONLYCOUNT
 #include "buildlayout.c"
+#undef ONLYCOUNT
+#undef LAYOUTNAME
+
+#define LAYOUTNAME CountNoCache
+#define ONLYCOUNT
+#define NOCACHE
+#include "buildlayout.c"
+#undef NOCACHE
 #undef ONLYCOUNT
 #undef LAYOUTNAME
 
