@@ -11,7 +11,8 @@ layout
 ------
 TODO: brute failed because there are just too many possible arrangements, there are far fewer layouts.  Rather than computing all arrangements and classifying the histograms, let's take each arrangement and see if it's possible.
 
-Hopefully this will actually be tractable, and if not, it should at least be able to provide a different subset of solutions, giving progress towards understanding.
+This is making good progress.  I've put some terrible hacks in it; there are lots of bit fields floating around that make for very unintuitive code, but they a major speedup.  There's also some terrible hackery with includign buildlayout.c multiple times with different #defines; this avoids some conditionals that actually result in a significant overall speedup.  Sadly, with code this tight, those conditionals actually matter (my unconfirmed suspicion is that adding them in results in extra register spillage, or maybe they're poorly predicted).  These hacks have given a 33% speedup over already very fast code.
+
 
 brute
 -----
