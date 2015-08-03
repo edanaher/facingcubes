@@ -11,7 +11,7 @@
 #else
 int global_dim;
 int ncells;
-#define MAXDIMENSION 8
+#define MAXDIMENSION 6
 #endif // DIMENSION
 
 #ifdef TIMELIMIT
