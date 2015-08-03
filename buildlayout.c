@@ -92,7 +92,11 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
       continue;
 
     // Now we know this cube is safe.  Let's go!
+#ifdef NOCACHE
+    placeCubeNoCache(c, dim, index);
+#else
     placeCube(c, dim, index);
+#endif
     //printf("Placed cube %d %d %d\n", index, dim, c);
 #if !defined(NOCACHE)
       if(checkCache()) { // Already saw it, must have failed.

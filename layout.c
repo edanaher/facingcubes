@@ -364,6 +364,16 @@ void placeCube(int c, int dim, int index) {
   placedCubes.len++;
 }
 
+void placeCubeNoCache(int c, int dim, int index) {
+  // This cell and all cells in the cube are used.
+  cellUsed |= dimoffsets[dim] << c;
+
+  // And it's used in dim, for checking adjacent cubes in dim.
+  cellUsedByDim[dim] |= (1LL << c);
+
+  placedCubes.len++;
+}
+
 void removeCube(int c, int dim) {
   // This cell and all cells in the cube are now unused.
   cellUsed &= ~(dimoffsets[dim] << c);
