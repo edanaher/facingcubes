@@ -318,22 +318,34 @@ long long cellUsed;
 // cellUsedByDim[dim]: Track cells used in each dimension to avoid faceing cubes.
 long long cellUsedByDim[1 << MAXDIMENSION];
 
-// This is a bit slow, but it avoids bookkeeping when building, which is far more important.
+// This is quite slow, but it avoids bookkeeping when building, which is far more important.
 void printLayout() {
-  int i, j;
+  int i;
+  int index, d;
+  long long used = 0;
   for(i = 0; i < ncells; i++) {
-    for(j = 0; j < placedCubes.len; j++)
-      if(placedCubes.cubes[j].coord == i)
-        printf("[%d %d] ", i, placedCubes.cubes[j].dim);
-    for(j = 0; j < placedCubes.len; j++) {
-      if(placedCubes.cubes[j].coord == (i & ~placedCubes.cubes[j].dim))
-        break;
+    for(index = global_dim; index > 0; index--) {
+      for(d = 1; d <= dims[index][0]; d++) {
+        int dim = dims[index][d];
+        if(cellUsedByDim[dim] & (1LL << i)) {
+          printf("[%d %d] ", i, dim);
+          used |= (dimoffsets[dim] << i);
+        }
+      }
     }
-    if(j == placedCubes.len)
-        printf("[%d %d] ", i, 0);
+    if(!(used & (1LL << i)))
+      printf("[%d %d] ", i, 0);
   }
-  for(i = 0; i < placedCubes.len; i++)
-    printf("{%d %d %d} ", placedCubes.cubes[i].index, placedCubes.cubes[i].dim, placedCubes.cubes[i].coord);
+
+  for(index = global_dim; index > 0; index--) {
+    for(d = 1; d <= dims[index][0]; d++) {
+      int dim = dims[index][d];
+      for(i = 0; i < 63; i++)
+        if(cellUsedByDim[dim] & (1LL << i))
+          printf("{%d %d %d} ", global_dim - index, dim, i);
+    }
+  }
+
   //printf("\n");
 }
 
