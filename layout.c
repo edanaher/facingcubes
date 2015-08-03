@@ -213,6 +213,7 @@ int checkCacheRotation(placed_cubes_t *cubes) {
 }
 
 int nrotationsChecked = 0;
+int ncacheHits = 0;
 int checkCache() {
   int flip_dims = 0, netFlipper = 0;
   int i, perm;
@@ -239,6 +240,18 @@ int checkCache() {
     if(i == cubes.len || cubes.cubes[i].index != firstIndex)
       continue;
 
+    int lastIndex = -1;
+    int lastDim = -1;
+    for(i = 0; i < cubes.len; i++) {
+      if(cubes.cubes[i].index == lastIndex && lastDim > cubes.cubes[i].dim)
+        break;
+      lastIndex = cubes.cubes[i].index;
+      lastDim = cubes.cubes[i].dim;
+    }
+
+    if(i != cubes.len)
+      continue;
+
     nrotationsChecked++;
 
     for(flip_dims = 0; flip_dims < (1 << global_dim); flip_dims++) {
@@ -248,8 +261,10 @@ int checkCache() {
       //printf("Reflection: ");
       //printPlacedCubes(&cubes);
 
-      if(checkCacheRotation(&cubes))
+      if(checkCacheRotation(&cubes)) {
+        ncacheHits++;
         return 1;
+      }
     }
   }
   return 0;
@@ -560,6 +575,9 @@ int main(int argc, char **argv) {
       histogram[i] = atoi(argv[i + histargs]);
     real = 1;
     buildHistograms(global_dim);
+    fprintf(stderr, "Rotations checked: %d\n", nrotationsChecked);
+    fprintf(stderr, "cache hits: %d\n", ncacheHits);
+    fprintf(stderr, "cache slots used: %lld\n", cacheLoad);
     return 0;
   }
   histogram[0] = 1;
