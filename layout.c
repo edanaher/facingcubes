@@ -243,17 +243,21 @@ int checkCache() {
     if(i == cubes.len || cubes.cubes[i].index != firstIndex)
       continue;
 
-    int lastIndex = -1;
-    int lastDim = -1;
-    for(i = 0; i < cubes.len; i++) {
-      if(cubes.cubes[i].index == lastIndex && lastDim > cubes.cubes[i].dim)
-        break;
+    int lastIndex = cubes.cubes[0].index;
+    int lastDim = cubes.cubes[0].dim;
+    int tmp;
+    for(i = 1; i < cubes.len; i++) {
+      if(cubes.cubes[i].index == lastIndex && lastDim > cubes.cubes[i].dim) {
+        cubes.cubes[i-1].dim = cubes.cubes[i].dim;
+        cubes.cubes[i].dim = lastDim;
+        tmp = cubes.cubes[i-1].coord;
+        cubes.cubes[i-1].coord = cubes.cubes[i].coord;
+        cubes.cubes[i].coord = tmp;
+        i--;
+      }
       lastIndex = cubes.cubes[i].index;
       lastDim = cubes.cubes[i].dim;
     }
-
-    if(i != cubes.len)
-      continue;
 
     nrotationsChecked++;
 
