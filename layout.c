@@ -278,6 +278,7 @@ int checkCache() {
 }
 
 unsigned long long global_start_time;
+unsigned long long global_current_start_time;
 unsigned long long currentTime() {
   struct timeval now;
   gettimeofday(&now, NULL);
@@ -492,7 +493,7 @@ void printProgress(int result) {
       fprintf(stderr, " %lld", counts[i][j]);
   }
   fprintf(stderr, "  %lld", counts[i][0]);
-  fprintf(stderr, "  %lld/%dM; %lld/%lldM; +%lld ++%lld =%lld", cacheLoad, CACHEMAPSIZE / 1000000, cachetail, CACHESIZE / 1000000, cacheConflicts, cacheSemiConflicts, now * total_histograms / global_progress / 1000000);
+  fprintf(stderr, "  %lld/%dM; %lld/%lldM; +%lld ++%lld =%lld", cacheLoad, CACHEMAPSIZE / 1000000, cachetail, CACHESIZE / 1000000, cacheConflicts, cacheSemiConflicts, (global_current_start_time + (now - global_current_start_time) * total_histograms / global_progress) / 1000000);
   fprintf(stderr, "\n");
 }
 

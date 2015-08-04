@@ -25,7 +25,7 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
 #ifndef ONLYCOUNT
   if(placedCubes.len == DISPLAYDEPTH) {
     long long now = runningTime();
-    fprintf(stderr, "%6lld.%03lld %lld/%lld (%lld +%lld ++%lld) =%lld  \033[1A\n", now / 1000000, (now / 1000) % 1000, counts[index][count], displayTotal, cacheLoad, cacheConflicts, cacheSemiConflicts, now * displayTotal / counts[index][count] / 1000000);
+    fprintf(stderr, "%6lld.%03lld %lld/%lld (%lld +%lld ++%lld) =%lld  \033[1A\n", now / 1000000, (now / 1000) % 1000, counts[index][count], displayTotal, cacheLoad, cacheConflicts, cacheSemiConflicts, (global_current_start_time + (now - global_current_start_time) * displayTotal / counts[index][count]) / 1000000);
   }
   if(placedCubes.len > DISPLAYDEPTH) {
     counts[index][count]--;
@@ -122,6 +122,7 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
 int startBuildLayoutName(LAYOUTNAME)() {
   int i, j;
   int index;
+  global_current_start_time = runningTime();
 #ifdef TIMELIMIT
   global_hist_timeout = runningTime() + TIMELIMIT * 1000000;
 #endif
