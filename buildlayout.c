@@ -25,7 +25,8 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
 #ifndef ONLYCOUNT
   if(placedCubes.len == DISPLAYDEPTH) {
     long long now = runningTime();
-    fprintf(stderr, "%6lld.%03lld %lld/%lld (%lld +%lld ++%lld) =%lld  \033[1A\n", now / 1000000, (now / 1000) % 1000, counts[index][count], displayTotal, cacheLoad, cacheConflicts, cacheSemiConflicts, (global_current_start_time + (now - global_current_start_time) * displayTotal / counts[index][count]) / 1000000);
+    clock_t clocknow = clock();
+    fprintf(stderr, "%6ld.%03ld/%6lld.%03lld %lld/%lld (%lld +%lld ++%lld) =%lld/%lld  \033[1A\n", clocknow / CLOCKS_PER_SEC, clocknow / (CLOCKS_PER_SEC / 1000) % 1000, now / 1000000, (now / 1000) % 1000, counts[index][count], displayTotal, cacheLoad, cacheConflicts, cacheSemiConflicts, (global_current_clock_time + (clocknow - global_current_clock_time) * displayTotal / counts[index][count]) / CLOCKS_PER_SEC, (global_current_start_time + (now - global_current_start_time) * displayTotal / counts[index][count]) / 1000000);
   }
   if(placedCubes.len > DISPLAYDEPTH) {
     counts[index][count]--;
@@ -35,7 +36,8 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
   if(placedCubes.len == DISPLAYDEPTH) {
     if(!(counts[index][count] % 10000)) {
       long long now = runningTime();
-      fprintf(stderr, "%6lld.%03lld %lld (%lld +%lld ++%lld)\033[1A\n", now / 1000000, (now / 1000) % 1000, counts[index][count], cacheLoad, cacheConflicts, cacheSemiConflicts);
+      clock_t clocknow = clock();
+      fprintf(stderr, "%6ld.%03ld/%6lld.%03lld %lld (%lld +%lld ++%lld)\033[1A\n", clocknow / CLOCKS_PER_SEC, clocknow / (CLOCKS_PER_SEC / 1000) % 1000, now / 1000000, (now / 1000) % 1000, counts[index][count], cacheLoad, cacheConflicts, cacheSemiConflicts);
     }
   }
 #endif
@@ -123,6 +125,7 @@ int startBuildLayoutName(LAYOUTNAME)() {
   int i, j;
   int index;
   global_current_start_time = runningTime();
+  global_current_clock_time = clock();
 #ifdef TIMELIMIT
   global_hist_timeout = runningTime() + TIMELIMIT * 1000000;
 #endif

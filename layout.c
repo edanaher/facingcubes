@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 #include <sys/time.h>
 
 #ifdef DIMENSION
@@ -279,6 +280,7 @@ int checkCache() {
 
 unsigned long long global_start_time;
 unsigned long long global_current_start_time;
+clock_t global_current_clock_time;
 unsigned long long currentTime() {
   struct timeval now;
   gettimeofday(&now, NULL);
