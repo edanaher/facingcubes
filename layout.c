@@ -254,7 +254,8 @@ int checkCache() {
         tmp = cubes.cubes[i-1].coord;
         cubes.cubes[i-1].coord = cubes.cubes[i].coord;
         cubes.cubes[i].coord = tmp;
-        i--;
+        if(i > 1)
+          i -= 2;
       }
       lastIndex = cubes.cubes[i].index;
       lastDim = cubes.cubes[i].dim;
@@ -481,7 +482,7 @@ int total_histograms = 0;
 void printProgress(int result) {
   int i, j;
   long long now = runningTime();
-  fprintf(stderr, "\n%6lld.%03lld %d/%d", now / 1000000, (now / 1000) % 1000, ++global_progress, total_histograms);
+  fprintf(stderr, "\n%6lld.%03lld %d/%d ", now / 1000000, (now / 1000) % 1000, ++global_progress, total_histograms);
   for(i = 0; i <= global_dim; i++)
     fprintf(stderr, "%d ", histogram[i]);
   switch(result) {
