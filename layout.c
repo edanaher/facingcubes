@@ -169,23 +169,29 @@ void addToCache() {
     flippedCubes.cubes[i].coord = placedCubes.cubes[i].coord;
   }
   int flip_dims, netFlipper = 0;
+
+  // If flipping along an axis doesn't change any cubes, don't (re)cache that flip.
+  int ignoreFlipDims = 0;
+  for(flip_dims = (1 << (global_dim - BIRTHDAYHASH)); flip_dims < (1 << global_dim); flip_dims <<= 1) {
+    for(i = 0; i < placedCubes.len; i++) {
+      int flipped = flippedCubes.cubes[i].coord ^ (flip_dims & ~flippedCubes.cubes[i].dim);
+      if(flipped != flippedCubes.cubes[i].coord)
+        break;
+    }
+    if(i == placedCubes.len)
+      ignoreFlipDims |= flip_dims;
+  }
+
   for(flip_dims = 0; flip_dims < (1 << global_dim); flip_dims += (1 << (global_dim - BIRTHDAYHASH))) {
-    //printf("flipdim is %x\n", flip_dims);
     if(flip_dims)
       netFlipper = flip_dims ^ (flip_dims - 1);
     for(i = 0; i < placedCubes.len; i++)
       flippedCubes.cubes[i].coord ^= netFlipper & ~flippedCubes.cubes[i].dim;
-    if(flip_dims) {
-      for(i = 0; i < placedCubes.len; i++)
-        if(flippedCubes.cubes[i].coord != placedCubes.cubes[i].coord)
-          break;
-      if(i == placedCubes.len)
-        continue;
-    }
+    if(flip_dims & ignoreFlipDims)
+      continue;
 #else
 #define flippedCubes placedCubes
 #endif
-
 
     unsigned int h = hash(&flippedCubes);
     debugcache(printf("Adding to cache: %d, ", h));
