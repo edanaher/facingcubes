@@ -151,12 +151,14 @@ unsigned int hash(placed_cubes_t *cubes) {
 }
 #endif
 
+#define debugcache(x)
+//#define debugcache(x) x
+
 long long int cacheConflicts = 0;
 long long int cacheSemiConflicts = 0;
 long long int cacheLoad = 0;
 void addToCache() {
   int i;
-
 
 #ifdef BIRTHDAYHASH
   placed_cubes_t flippedCubes;
@@ -184,12 +186,10 @@ void addToCache() {
 #define flippedCubes placedCubes
 #endif
 
-    //printf("Adding to cache: ");
-    //printPlacedCubes(&flippedCubes);
 
     unsigned int h = hash(&flippedCubes);
-    //printf("Added to cache %d (%lld): ", h, cacheLoad);
-    //printPlacedCubes(&flippedCubes);
+    debugcache(printf("Adding to cache: %d, ", h));
+    debugcache(printPlacedCubes(&flippedCubes));
     while(cachemap[h]) {
       //printf("Conflict on %d\n", h);
       cacheConflicts++;
@@ -260,8 +260,8 @@ int checkCache() {
 
   cubes.len = placedCubes.len;
 
-  //printf("checking placement: ");
-  //printPlacedCubes(&placedCubes);
+  debugcache(printf("checking placement: "));
+  debugcache(printPlacedCubes(&placedCubes));
   for(perm = 0; perm < npermutations; perm++) {
     for(i = 0; i < placedCubes.len; i++) {
       cubes.cubes[i].index = placedCubes.cubes[i].index;
@@ -269,8 +269,6 @@ int checkCache() {
       cubes.cubes[i].coord = rotates[perm][placedCubes.cubes[i].coord];
     }
 
-    //printf("Rotation: ");
-    //printPlacedCubes(&cubes);
     int firstIndex = cubes.cubes[0].index;
     //printf("%d\n", firstIndex);
     for(i = 0; i < cubes.len && cubes.cubes[i].index == firstIndex; i++)
@@ -301,8 +299,8 @@ int checkCache() {
 
     nrotationsChecked++;
 
-    //printf("checking rotation: ");
-    //printPlacedCubes(&cubes);
+    debugcache(printf("checking rotation: "));
+    debugcache(printPlacedCubes(&cubes));
 #ifdef BIRTHDAYHASH
     for(flip_dims = 0; flip_dims < (1 << (global_dim - BIRTHDAYHASH)); flip_dims++) {
 #else
@@ -312,15 +310,15 @@ int checkCache() {
         netFlipper = flip_dims ^ (flip_dims - 1);
       for(i = 0; i < placedCubes.len; i++)
         cubes.cubes[i].coord ^= netFlipper & ~cubes.cubes[i].dim;
-      //printf("Reflection: ");
-      //printPlacedCubes(&cubes);
 
-      //printf("checking reflection %x: ", flip_dims);
-      //printPlacedCubes(&cubes);
+      debugcache(printf("checking reflection %x: ", flip_dims));
+      debugcache(printPlacedCubes(&cubes));
 
       if(checkCacheRotation(&cubes)) {
-        //printf("Cache hit: ");
-        //printPlacedCubes(&cubes);
+        debugcache(printf("Cache hit for: "));
+        debugcache(printPlacedCubes(&placedCubes));
+        debugcache(printf(" on: "));
+        debugcache(printPlacedCubes(&cubes));
         ncacheHits++;
         return 1;
       }
