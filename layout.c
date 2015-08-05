@@ -169,7 +169,8 @@ void addToCache() {
   int flip_dims, netFlipper = 0;
   for(flip_dims = 0; flip_dims < (1 << global_dim); flip_dims += (1 << (global_dim - BIRTHDAYHASH))) {
     //printf("flipdim is %x\n", flip_dims);
-    netFlipper ^= flip_dims;
+    if(flip_dims)
+      netFlipper = flip_dims ^ (flip_dims - 1);
     for(i = 0; i < placedCubes.len; i++)
       flippedCubes.cubes[i].coord ^= netFlipper & ~flippedCubes.cubes[i].dim;
     if(flip_dims) {
@@ -307,7 +308,8 @@ int checkCache() {
 #else
     for(flip_dims = 0; flip_dims < (1 << global_dim); flip_dims++) {
 #endif
-      netFlipper ^= flip_dims;
+      if(flip_dims)
+        netFlipper = flip_dims ^ (flip_dims - 1);
       for(i = 0; i < placedCubes.len; i++)
         cubes.cubes[i].coord ^= netFlipper & ~cubes.cubes[i].dim;
       //printf("Reflection: ");
