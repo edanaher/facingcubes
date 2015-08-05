@@ -159,33 +159,36 @@ void addToCache() {
 
 
 #ifdef BIRTHDAYHASH
-  placed_cubes_t cubes;
-  cubes.len = placedCubes.len;
+  placed_cubes_t flippedCubes;
+  flippedCubes.len = placedCubes.len;
   for(i = 0; i < placedCubes.len; i++) {
-    cubes.cubes[i].index = placedCubes.cubes[i].index;
-    cubes.cubes[i].dim = placedCubes.cubes[i].dim;
-    cubes.cubes[i].coord = placedCubes.cubes[i].coord;
+    flippedCubes.cubes[i].index = placedCubes.cubes[i].index;
+    flippedCubes.cubes[i].dim = placedCubes.cubes[i].dim;
+    flippedCubes.cubes[i].coord = placedCubes.cubes[i].coord;
   }
   int flip_dims, netFlipper = 0;
   for(flip_dims = 0; flip_dims < (1 << global_dim); flip_dims += (1 << (global_dim - BIRTHDAYHASH))) {
     //printf("flipdim is %x\n", flip_dims);
     netFlipper ^= flip_dims;
     for(i = 0; i < placedCubes.len; i++)
-      cubes.cubes[i].coord ^= netFlipper & ~placedCubes.cubes[i].dim;
+      flippedCubes.cubes[i].coord ^= netFlipper & ~flippedCubes.cubes[i].dim;
     if(flip_dims) {
       for(i = 0; i < placedCubes.len; i++)
-        if(cubes.cubes[i].coord != placedCubes.cubes[i].coord)
+        if(flippedCubes.cubes[i].coord != placedCubes.cubes[i].coord)
           break;
       if(i == placedCubes.len)
         continue;
     }
 #else
-#define cubes placedCubes
+#define flippedCubes placedCubes
 #endif
 
-    unsigned int h = hash(&cubes);
+    //printf("Adding to cache: ");
+    //printPlacedCubes(&flippedCubes);
+
+    unsigned int h = hash(&flippedCubes);
     //printf("Added to cache %d (%lld): ", h, cacheLoad);
-    //printPlacedCubes(&cubes);
+    //printPlacedCubes(&flippedCubes);
     while(cachemap[h]) {
       //printf("Conflict on %d\n", h);
       cacheConflicts++;
@@ -195,18 +198,18 @@ void addToCache() {
     }
     cachemap[h] = cachetail;
     cacheLoad++;
+
+    cache[cachetail++] = placedCubes.len;
+    for(i = 0; i < placedCubes.len; i++) {
+      cache[cachetail++] = flippedCubes.cubes[i].index;
+      cache[cachetail++] = flippedCubes.cubes[i].dim;
+      cache[cachetail++] = flippedCubes.cubes[i].coord;
+    }
 #ifdef BIRTHDAYHASH
   }
 #else
-#undef cubes
+#undef flippedCubes
 #endif
-
-  cache[cachetail++] = placedCubes.len;
-  for(i = 0; i < placedCubes.len; i++) {
-    cache[cachetail++] = placedCubes.cubes[i].index;
-    cache[cachetail++] = placedCubes.cubes[i].dim;
-    cache[cachetail++] = placedCubes.cubes[i].coord;
-  }
 }
 
 void printPlacedCubes(placed_cubes_t *cubes) {
@@ -255,6 +258,9 @@ int checkCache() {
   placed_cubes_t cubes;
 
   cubes.len = placedCubes.len;
+
+  //printf("checking placement: ");
+  //printPlacedCubes(&placedCubes);
   for(perm = 0; perm < npermutations; perm++) {
     for(i = 0; i < placedCubes.len; i++) {
       cubes.cubes[i].index = placedCubes.cubes[i].index;
@@ -294,6 +300,8 @@ int checkCache() {
 
     nrotationsChecked++;
 
+    //printf("checking rotation: ");
+    //printPlacedCubes(&cubes);
 #ifdef BIRTHDAYHASH
     for(flip_dims = 0; flip_dims < (1 << (global_dim - BIRTHDAYHASH)); flip_dims++) {
 #else
@@ -305,7 +313,12 @@ int checkCache() {
       //printf("Reflection: ");
       //printPlacedCubes(&cubes);
 
+      //printf("checking reflection %x: ", flip_dims);
+      //printPlacedCubes(&cubes);
+
       if(checkCacheRotation(&cubes)) {
+        //printf("Cache hit: ");
+        //printPlacedCubes(&cubes);
         ncacheHits++;
         return 1;
       }
