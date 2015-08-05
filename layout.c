@@ -370,6 +370,7 @@ void arrangeDims() {
       if(!(j & (1LL << i)))
         dimoverlapchecks[i] |= (1LL << j);
 
+  adjacentCells[i] = 1LL << i;
   for(i = 0; i < ncells; i++)
     for(b = 1; b < ncells; b <<= 1)
       adjacentCells[i] |= (1LL << (i ^ b));
