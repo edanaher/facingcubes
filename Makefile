@@ -11,6 +11,8 @@ OPTFLAGS=-O3 ${CFLAGS}
 # - CACHEDEPTH: How many layers of the search tree to cache
 # - FASTHASH: Use a less precise but faster hash function
 # - DISPLAYDEPTH: How deep to go for display purposes
+# - BIRTHDAYHASH: Store 1 << BIRTHDAYHASH hashes for each value to reduce lookup time by the same value.a
+#   						  A straightforward time/space tradeoff.
 
 layout: layout.c buildlayout.c
 	${CC} layout.c -olayout ${OPTFLAGS}

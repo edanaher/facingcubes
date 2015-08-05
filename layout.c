@@ -157,17 +157,49 @@ long long int cacheLoad = 0;
 void addToCache() {
   int i;
 
-  unsigned int h = hash(&placedCubes);
-  //printf("Added to cache %d (%lld): ", h, cacheLoad);
-  //printPlacedCubes(&placedCubes);
-  while(cachemap[h]) {
-    //printf("Conflict on %d\n", h);
-    cacheConflicts++;
-    h++;
-    if(h > CACHEMAPSIZE)
-      h = 0;
+
+#ifdef BIRTHDAYHASH
+  placed_cubes_t cubes;
+  cubes.len = placedCubes.len;
+  for(i = 0; i < placedCubes.len; i++) {
+    cubes.cubes[i].index = placedCubes.cubes[i].index;
+    cubes.cubes[i].dim = placedCubes.cubes[i].dim;
+    cubes.cubes[i].coord = placedCubes.cubes[i].coord;
   }
-  cachemap[h] = cachetail;
+  int flip_dims, netFlipper = 0;
+  for(flip_dims = 0; flip_dims < (1 << global_dim); flip_dims += (1 << (global_dim - BIRTHDAYHASH))) {
+    //printf("flipdim is %x\n", flip_dims);
+    netFlipper ^= flip_dims;
+    for(i = 0; i < placedCubes.len; i++)
+      cubes.cubes[i].coord ^= netFlipper & ~placedCubes.cubes[i].dim;
+    if(flip_dims) {
+      for(i = 0; i < placedCubes.len; i++)
+        if(cubes.cubes[i].coord != placedCubes.cubes[i].coord)
+          break;
+      if(i == placedCubes.len)
+        continue;
+    }
+#else
+#define cubes placedCubes
+#endif
+
+    unsigned int h = hash(&cubes);
+    //printf("Added to cache %d (%lld): ", h, cacheLoad);
+    //printPlacedCubes(&cubes);
+    while(cachemap[h]) {
+      //printf("Conflict on %d\n", h);
+      cacheConflicts++;
+      h++;
+      if(h > CACHEMAPSIZE)
+        h = 0;
+    }
+    cachemap[h] = cachetail;
+    cacheLoad++;
+#ifdef BIRTHDAYHASH
+  }
+#else
+#undef cubes
+#endif
 
   cache[cachetail++] = placedCubes.len;
   for(i = 0; i < placedCubes.len; i++) {
@@ -175,7 +207,6 @@ void addToCache() {
     cache[cachetail++] = placedCubes.cubes[i].dim;
     cache[cachetail++] = placedCubes.cubes[i].coord;
   }
-  cacheLoad++;
 }
 
 void printPlacedCubes(placed_cubes_t *cubes) {
@@ -263,7 +294,11 @@ int checkCache() {
 
     nrotationsChecked++;
 
+#ifdef BIRTHDAYHASH
+    for(flip_dims = 0; flip_dims < (1 << (global_dim - BIRTHDAYHASH)); flip_dims++) {
+#else
     for(flip_dims = 0; flip_dims < (1 << global_dim); flip_dims++) {
+#endif
       netFlipper ^= flip_dims;
       for(i = 0; i < placedCubes.len; i++)
         cubes.cubes[i].coord ^= netFlipper & ~cubes.cubes[i].dim;
