@@ -124,7 +124,7 @@ void printPlacedCubes(placed_cubes_t *cubes);
 
 #ifdef FASTHASH
 unsigned int hash(placed_cubes_t *cubes) {
-  int h = (cubes->len * 1299721) % CACHEMAPSIZE;
+  unsigned int h = (cubes->len * 1299721) % CACHEMAPSIZE;
   int i;
   for(i = 0; i < cubes->len; i++) {
     h = (h + (cubes->cubes[i].dim + 1000) * (cubes->cubes[i].coord + 1));
@@ -227,7 +227,7 @@ void printPlacedCubes(placed_cubes_t *cubes) {
 }
 
 
-int checkCacheElement(placed_cubes_t *cubes, int e) {
+int checkCacheElement(placed_cubes_t *cubes, unsigned long long e) {
   int j;
   //printf("Checking cache: %d\n", i);
   cacheSemiConflicts++;
