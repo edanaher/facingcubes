@@ -21,7 +21,7 @@ int hist_timeout_counter = 0;
 #endif
 
 #ifndef CACHESIZE
-#define CACHESIZE (1LL<<30)
+#define CACHESIZE (1LL<<34)
 #endif
 
 #ifndef CACHEMAPSIZE
