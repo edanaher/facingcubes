@@ -3,7 +3,13 @@
 # Look for timeout lines, and run them.  Then take the output and update
 # layout.6.all for each line of output.  (This update MUST be sequential to
 # avoid sed reading a partial file and truncating the output.)
-cat layout.6.all | grep Timeout | parallel --nice 19 -j3 --colsep " " '
-  time ./layout6 {1} {2} {3} {4} {5} {6} {7}
-' | parallel -j1 'sed "/^`echo {} | cut -d: -f1`/ s#.*#{}#" -i layout.6.all'
+while grep -q Timeout layout.6.all; do
+  cat layout.6.all | grep Timeout | head -n1 | while read a b c d e f g rest; do
+    layout="$a $b $c $d $e $f $g"
+    echo Starting $layout
+    sed "/^$layout/ s#.*#$layout Working#" -i layout.6.all
+    time nice -n19 ./layout6 $layout |
+      xargs -I {} sed "/^$layout/ s#.*#{}#" -i layout.6.all
+  done
 
+done
