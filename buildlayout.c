@@ -81,13 +81,13 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
     int cube = baseCellsForDim[dim][c];
     //printf("Checking [%d %d]\n", cube, dim);
 
-    // Shortcut if the cell would be face-aligned in this dimension (including with itself).
-    if(cellUsedByDim[dim] & adjacentCells[cube])
-      continue;
-
     // For each cell, if it differs from cube only by dimensions in dim, it's in
     // the cube.  If it's occupied, then this position won't work.
     if(cellUsed & (dimoffsets[dim] << cube))
+      continue;
+
+    // Shortcut if the cell would be face-aligned in this dimension (including with itself).
+    if(cellUsedByDim[dim] & adjacentCells[cube])
       continue;
 
     // Now we know this cube is safe.  Let's go!
