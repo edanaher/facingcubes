@@ -66,7 +66,7 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
       printLayout();
       return 1;
     } else { // Not finished; start next index
-      return buildLayoutName(LAYOUTNAME)(index + 1, 0, 1, 0);
+      return buildLayoutName(LAYOUTNAME)(index + 1, 0, 1, 1);
     }
   } else if(d > dims[global_dim - index][0]) { // Out of dimensions for this index; give up.
     return 0;
@@ -77,39 +77,36 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
   if(placedCubes.len != DISPLAYDEPTH)
 #endif
 #endif
-  for(; c < ncells; c++) {
-    //printf("Checking [%d %d]\n", c, dim);
-    // Only consider cubes which are 0 in the dimension we're checking.
-    if(c & dim)
-      continue;
-    //printf("Checked [%d %d]: %d\n", c, dim, cellBlocked[dim][c]);
+  for(; c <= baseCellsForDim[dim][0]; c++) {
+    int cube = baseCellsForDim[dim][c];
+    //printf("Checking [%d %d]\n", cube, dim);
 
     // Shortcut if the cell would be face-aligned in this dimension (including with itself).
-    if(cellUsedByDim[dim] & adjacentCells[c])
+    if(cellUsedByDim[dim] & adjacentCells[cube])
       continue;
 
-    // For each cell, if it differs from c only by dimensions in dim, it's in
+    // For each cell, if it differs from cube only by dimensions in dim, it's in
     // the cube.  If it's occupied, then this position won't work.
-    if(cellUsed & (dimoffsets[dim] << c))
+    if(cellUsed & (dimoffsets[dim] << cube))
       continue;
 
     // Now we know this cube is safe.  Let's go!
 #ifdef NOCACHE
-    placeCubeNoCache(c, dim, index);
+    placeCubeNoCache(cube, dim, index);
 #else
-    placeCube(c, dim, index);
+    placeCube(cube, dim, index);
 #endif
-    //printf("Placed cube %d %d %d\n", index, dim, c);
+    //printf("Placed cube %d %d %d\n", index, dim, cube);
 #if !defined(NOCACHE)
       if(checkCache()) { // Already saw it, must have failed.
         //printf("cached\n");
-        removeCube(c, dim);
+        removeCube(cube, dim);
         continue;
       }
       addToCache();
 #endif
     success = buildLayoutName(LAYOUTNAME)(index, count + 1, d, c + 1);
-    removeCube(c, dim);
+    removeCube(cube, dim);
 
     //printf("Leaving\n");
     //printLayout();
@@ -118,7 +115,7 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
   }
 
   // Finally, let's consider this dimension finished and try the next one:
-  return buildLayoutName(LAYOUTNAME)(index, count, d + 1, 0);
+  return buildLayoutName(LAYOUTNAME)(index, count, d + 1, 1);
 }
 
 int startBuildLayoutName(LAYOUTNAME)() {
@@ -139,9 +136,9 @@ int startBuildLayoutName(LAYOUTNAME)() {
   cachemap = calloc(CACHEMAPSIZE, sizeof(unsigned long long));
   for(index = 0; !histogram[index]; index++);
   if(index == global_dim) // Don't add a simple cube; it makes things sad.
-    return buildLayoutName(LAYOUTNAME)(index - 1, 0, 1, 0);
+    return buildLayoutName(LAYOUTNAME)(index - 1, 0, 1, 1);
   placeCube(0, dims[global_dim - index][1], index);
-  int success = buildLayoutName(LAYOUTNAME)(index, 1, 1, 1);
+  int success = buildLayoutName(LAYOUTNAME)(index, 1, 1, 2);
   removeCube(0, dims[global_dim - index][1]);
   return success;
 }

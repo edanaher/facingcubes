@@ -49,6 +49,9 @@ long long dimoverlapchecks[MAXDIMENSION];
 // Adjacent cubes which will block it in shared dimensions.
 long long adjacentCells[1 << MAXDIMENSION];
 
+// A list of cells that have all 0s where dim has 1s.
+int baseCellsForDim[1 << MAXDIMENSION][(1 << (MAXDIMENSION-1)) + 1];
+
 // All permutations of up to global_dim elements; used for rotations.
 int npermutations;
 int permutations[7*720][MAXDIMENSION];
@@ -348,7 +351,7 @@ unsigned long long runningTime() {
 }
 
 void arrangeDims() {
-  int i, j, b;
+  int i, j, b, d;
   for(i = 0; i < ncells; i++) {
     int ones = 0;
     for(b = 0; b <= global_dim; b++)
@@ -374,6 +377,21 @@ void arrangeDims() {
   for(i = 0; i < ncells; i++)
     for(b = 1; b < ncells; b <<= 1)
       adjacentCells[i] |= (1LL << (i ^ b));
+
+  // When adding a cell along a dimension, only use ones that are 0 when anded with it.
+  for(d = 1; d < ncells; d++) {
+    baseCellsForDim[d][0] = 0;
+    for(i = 0; i < ncells; i++)
+      if(!(i & d))
+        baseCellsForDim[d][++baseCellsForDim[d][0]] = i;
+  }
+
+  /*for(d = 1; d < ncells; d++) {
+    printf("%d:", d);
+    for(i = 1; i <= baseCellsForDim[d][0]; i++)
+      printf(" %d", baseCellsForDim[d][i]);
+    printf("\n");
+  }*/
 
   /*for(i = 0; i < ncells; i++)
     printf("%d: %llx\n", i, adjacentCells[i]);*/
