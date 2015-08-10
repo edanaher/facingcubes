@@ -137,19 +137,9 @@ unsigned int hash(placed_cubes_t *cubes) {
 #else
 unsigned int hash(placed_cubes_t *cubes) {
   unsigned int h = (cubes->len * 1299721) % CACHEMAPSIZE;
-  int i, j, cur;
-  int last = -1;
-  for(i = 0; i < cubes->len; i++) {
-    for(cur = 0; cur < cubes->len; cur++)
-      if(cubes->cubes[cur].coord > last)
-        break;
-
-    for(j = cur; j < cubes->len; j++) {
-      if(cubes->cubes[j].coord > last && cubes->cubes[j].coord < cubes->cubes[cur].coord)
-        cur = j;
-    }
+  int i;
+  for(i = 0; i < cubes->len; i++)
     h = (h * 7927 + (cubes->cubes[i].dim * 101) + cubes->cubes[i].coord) % CACHEMAPSIZE;
-  }
   return h;
 }
 #endif
