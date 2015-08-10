@@ -59,9 +59,7 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
       counts[index+1][0]++;
       for(b = 0; b < global_dim; b++)
         if(((~cellUsed) >> (1 << b)) & (~cellUsed) & dimoverlapchecks[b])
-          break;
-      if(b != global_dim)
-        return 0;
+          return 0;
       printf("Success: ");
       printLayout();
       return 1;
