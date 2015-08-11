@@ -144,6 +144,33 @@ unsigned int hash(placed_cubes_t *cubes) {
 }
 #endif
 
+void getSkipDims(placed_cubes_t *cubes, int *skipDims, int *skipDimsMask) {
+  int numBits[MAXDIMENSION][2];
+  int i, b;
+  *skipDims = 0;
+  *skipDimsMask = 0;
+
+  for(b = 0; b < global_dim; b++)
+    numBits[b][0] = numBits[b][1] = 0;
+
+  for(i = 0; i < cubes->len; i++)
+    for(b = 0; b < global_dim; b++)
+      if(!(cubes->cubes[i].dim & (1 << b)))
+        numBits[b][(cubes->cubes[i].coord >> b) & 1]++;
+
+  for(b = 0; b < global_dim; b++)
+    if(numBits[b][0] != numBits[b][1] || (!numBits[b][0] && !numBits[b][1])) {
+      *skipDims |= (numBits[b][1] > numBits[b][0]) << b;
+      *skipDimsMask |= 1 << b;
+    }
+
+  /*printf("numBits:");
+  for(b = 0; b < global_dim; b++)
+    printf(" (%d %d)", numBits[b][0], numBits[b][1]);
+  printf("  %d %d\n", *skipDimsMask, *skipDims);*/
+}
+
+
 #define debugcache(x)
 //#define debugcache(x) x
 
@@ -152,8 +179,11 @@ long long int cacheSemiConflicts = 0;
 long long int cacheLoad = 0;
 void addToCache() {
   int i;
+  int skipDims, skipDimsMask;
 
-#ifdef BIRTHDAYHASH
+  getSkipDims(&placedCubes, &skipDims, &skipDimsMask);
+  debugcache(printf("skipDims is %d/%d\n", skipDims, skipDimsMask));
+
   placed_cubes_t flippedCubes;
   flippedCubes.len = placedCubes.len;
   for(i = 0; i < placedCubes.len; i++) {
@@ -161,7 +191,8 @@ void addToCache() {
     flippedCubes.cubes[i].dim = placedCubes.cubes[i].dim;
     flippedCubes.cubes[i].coord = placedCubes.cubes[i].coord;
   }
-  int flip_dims, netFlipper = 0;
+#ifdef BIRTHDAYHASH
+  int flip_dims, netFlipper = 0, lastFlip = 0;
 
   // If flipping along an axis doesn't change any cubes, don't (re)cache that flip.
   int ignoreFlipDims = 0;
@@ -176,14 +207,22 @@ void addToCache() {
   }
 
   for(flip_dims = 0; flip_dims < (1 << global_dim); flip_dims += (1 << (global_dim - BIRTHDAYHASH))) {
-    if(flip_dims)
-      netFlipper = flip_dims ^ (flip_dims - 1);
-    for(i = 0; i < placedCubes.len; i++)
-      flippedCubes.cubes[i].coord ^= netFlipper & ~flippedCubes.cubes[i].dim;
+    if(flip_dims & skipDimsMask)
+      continue;
+
     if(flip_dims & ignoreFlipDims)
       continue;
+    int realFlipDims = flip_dims | skipDims;
+    netFlipper = realFlipDims ^ lastFlip;
+    lastFlip = realFlipDims;
+    for(i = 0; i < placedCubes.len; i++)
+      flippedCubes.cubes[i].coord ^= (netFlipper & ~flippedCubes.cubes[i].dim);
 #else
-#define flippedCubes placedCubes
+    debugcache(printf("Adding to cache unskipped, "));
+    debugcache(printPlacedCubes(&flippedCubes));
+    for(i = 0; i < placedCubes.len; i++)
+      flippedCubes.cubes[i].coord ^= (skipDims & ~flippedCubes.cubes[i].dim);
+
 #endif
 
     unsigned int h = hash(&flippedCubes);
@@ -207,8 +246,6 @@ void addToCache() {
     }
 #ifdef BIRTHDAYHASH
   }
-#else
-#undef flippedCubes
 #endif
 }
 
@@ -253,10 +290,13 @@ int checkCacheRotation(placed_cubes_t *cubes) {
 int nrotationsChecked = 0;
 int ncacheHits = 0;
 int checkCache() {
-  int flip_dims = 0, netFlipper = 0;
+  int flip_dims = 0, netFlipper = 0, lastFlip = 0;
   int i, perm;
   placed_cubes_t cubes;
+  int skipDimsMask, skipDimsMaskBase;
+  int skipDims, skipDimsBase;
 
+  getSkipDims(&placedCubes, &skipDimsBase, &skipDimsMaskBase);
   cubes.len = placedCubes.len;
 
   debugcache(printf("checking placement: "));
@@ -267,6 +307,8 @@ int checkCache() {
       cubes.cubes[i].dim = rotates[perm][placedCubes.cubes[i].dim];
       cubes.cubes[i].coord = rotates[perm][placedCubes.cubes[i].coord];
     }
+    skipDims = rotates[perm][skipDimsBase];
+    skipDimsMask = rotates[perm][skipDimsMaskBase];
 
     int firstIndex = cubes.cubes[0].index;
     //printf("%d\n", firstIndex);
@@ -300,17 +342,22 @@ int checkCache() {
 
     debugcache(printf("checking rotation: "));
     debugcache(printPlacedCubes(&cubes));
+
+    lastFlip = 0;
 #ifdef BIRTHDAYHASH
     for(flip_dims = 0; flip_dims < (1 << (global_dim - BIRTHDAYHASH)); flip_dims++) {
 #else
     for(flip_dims = 0; flip_dims < (1 << global_dim); flip_dims++) {
 #endif
-      if(flip_dims)
-        netFlipper = flip_dims ^ (flip_dims - 1);
+      if(flip_dims & skipDimsMask)
+        continue;
+      int realFlipDims = flip_dims | skipDims;
+      netFlipper = realFlipDims ^ lastFlip;
+      lastFlip = realFlipDims;
       for(i = 0; i < placedCubes.len; i++)
-        cubes.cubes[i].coord ^= netFlipper & ~cubes.cubes[i].dim;
+        cubes.cubes[i].coord ^= (netFlipper & ~cubes.cubes[i].dim);
 
-      debugcache(printf("checking reflection %x: ", flip_dims));
+      debugcache(printf("checking reflection %x: ", realFlipDims));
       debugcache(printPlacedCubes(&cubes));
 
       if(checkCacheRotation(&cubes)) {
