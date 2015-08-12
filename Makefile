@@ -24,7 +24,7 @@ layout6: layout.c buildlayout.c
 	${CC} layout.c -olayout6 ${OPTFLAGS} -DDIMENSION=6 -DCACHEDEPTH=6
 
 layout6stable: layout.c buildlayout.c
-	${CC} layout.c -olayout6stable ${OPTFLAGS} -DDIMENSION=6 -DCACHEDEPTH=6 -DDISPLAYDEPTH=5 -DBIRTHDAYHASH=1
+	${CC} layout.c -olayout6stable ${OPTFLAGS} -DDIMENSION=6 -DCACHEDEPTH=7 -DDISPLAYDEPTH=5 -DBIRTHDAYHASH=1
 
 layout6timed: layout.c buildlayout.c
 	${CC} layout.c -olayout6timed ${OPTFLAGS} -DDIMENSION=6 -DTIMELIMIT=600 -DCACHEDEPTH=4
