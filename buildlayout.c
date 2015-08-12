@@ -7,19 +7,19 @@
 // - index: which histogram index
 // - count: which element within this histogram index
 // - d: current dimension index
-int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
+int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c, long long *cellUsed, long long *cellUsedByDim) {
   int dim = dims[global_dim - index][d];
   int b, success = 0;
 
 #if !defined(NOCACHE)
   if(placedCubes.len >= CACHEDEPTH)
-    return buildLayoutNameSuffix(LAYOUTNAME,NoCache)(index, count, d, c);
+    return buildLayoutNameSuffix(LAYOUTNAME,NoCache)(index, count, d, c, cellUsed, cellUsedByDim);
 #endif
 
   counts[index][count]++;
 
   //printf("Entering %d %d %d (%d)\n", index, count, d, dim);
-  //printLayout();
+  //printLayout(cellUsedByDim);
 
 #if defined(DISPLAYDEPTH) && !defined(NODISPLAY)
 #ifndef ONLYCOUNT
@@ -34,7 +34,7 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
   }
   if(placedCubes.len > DISPLAYDEPTH) {
     counts[index][count]--;
-    return buildLayoutNameSuffix(LAYOUTNAME,NoDisplay)(index, count, d, c);
+    return buildLayoutNameSuffix(LAYOUTNAME,NoDisplay)(index, count, d, c, cellUsed, cellUsedByDim);
   }
 #else
   if(placedCubes.len == DISPLAYDEPTH) {
@@ -62,13 +62,13 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
     if(index == global_dim - 1) { // Placed all indices except zero-dimensional; check those!
       counts[index+1][0]++;
       for(b = 0; b < global_dim; b++)
-        if(((~cellUsed) >> (1 << b)) & (~cellUsed) & dimoverlapchecks[b])
+        if(((~*cellUsed) >> (1 << b)) & (~*cellUsed) & dimoverlapchecks[b])
           return 0;
       printf("Success: ");
-      printLayout();
+      printLayout(cellUsedByDim);
       return 1;
     } else { // Not finished; start next index
-      return buildLayoutName(LAYOUTNAME)(index + 1, 0, 1, 1);
+      return buildLayoutName(LAYOUTNAME)(index + 1, 0, 1, 1, cellUsed, cellUsedByDim);
     }
   } else if(d > dims[global_dim - index][0]) { // Out of dimensions for this index; give up.
     return 0;
@@ -85,7 +85,7 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
 
     // For each cell, if it differs from cube only by dimensions in dim, it's in
     // the cube.  If it's occupied, then this position won't work.
-    if(cellUsed & (dimoffsets[dim] << cube))
+    if(*cellUsed & (dimoffsets[dim] << cube))
       continue;
 
     // Shortcut if the cell would be face-aligned in this dimension (including with itself).
@@ -94,35 +94,44 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c) {
 
     // Now we know this cube is safe.  Let's go!
 #ifdef NOCACHE
-    placeCubeNoCache(cube, dim, index);
+    placeCubeNoCache(cube, dim, index, cellUsed, cellUsedByDim);
 #else
-    placeCube(cube, dim, index);
+    placeCube(cube, dim, index, cellUsed, cellUsedByDim);
 #endif
     //printf("Placed cube %d %d %d\n", index, dim, cube);
 #if !defined(NOCACHE)
       if(checkCache()) { // Already saw it, must have failed.
         //printf("cached\n");
-        removeCube(cube, dim);
+        removeCube(cube, dim, cellUsed, cellUsedByDim);
         continue;
       }
       addToCache();
 #endif
-    success = buildLayoutName(LAYOUTNAME)(index, count + 1, d, c + 1);
-    removeCube(cube, dim);
+    success = buildLayoutName(LAYOUTNAME)(index, count + 1, d, c + 1, cellUsed, cellUsedByDim);
+    removeCube(cube, dim, cellUsed, cellUsedByDim);
 
     //printf("Leaving\n");
-    //printLayout();
+    //printLayout(cellUsedByDim);
     if(success)
       return success;
   }
 
   // Finally, let's consider this dimension finished and try the next one:
-  return buildLayoutName(LAYOUTNAME)(index, count, d + 1, 1);
+  return buildLayoutName(LAYOUTNAME)(index, count, d + 1, 1, cellUsed, cellUsedByDim);
 }
 
 int startBuildLayoutName(LAYOUTNAME)() {
   int i, j;
   int index;
+
+  // If the cell is in a cube
+  long long cellUsed = 0;
+
+  // cellUsedByDim[dim]: Track cells used in each dimension to avoid faceing cubes.
+  long long cellUsedByDim[1 << MAXDIMENSION];
+  for(i = 0; i < ncells; i++)
+    cellUsedByDim[i] = 0;
+
   global_current_start_time = runningTime();
   global_current_clock_time = clock();
 #ifdef TIMELIMIT
@@ -138,10 +147,10 @@ int startBuildLayoutName(LAYOUTNAME)() {
   cachemap = calloc(CACHEMAPSIZE, sizeof(unsigned long long));
   for(index = 0; !histogram[index]; index++);
   if(index == global_dim) // Don't add a simple cube; it makes things sad.
-    return buildLayoutName(LAYOUTNAME)(index - 1, 0, 1, 1);
-  placeCube(0, dims[global_dim - index][1], index);
-  int success = buildLayoutName(LAYOUTNAME)(index, 1, 1, 2);
-  removeCube(0, dims[global_dim - index][1]);
+    return buildLayoutName(LAYOUTNAME)(index - 1, 0, 1, 1, &cellUsed, cellUsedByDim);
+  placeCube(0, dims[global_dim - index][1], index, &cellUsed, cellUsedByDim);
+  int success = buildLayoutName(LAYOUTNAME)(index, 1, 1, 2, &cellUsed, cellUsedByDim);
+  removeCube(0, dims[global_dim - index][1], &cellUsed, cellUsedByDim);
   return success;
 }
 

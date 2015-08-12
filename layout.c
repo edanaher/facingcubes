@@ -447,15 +447,8 @@ void arrangeDims() {
   }*/
 }
 
-// If the cell is in a cube
-long long cellUsed;
-#define cellIsUsed(c) (cellUsed & (1LL << (c)))
-
-// cellUsedByDim[dim]: Track cells used in each dimension to avoid faceing cubes.
-long long cellUsedByDim[1 << MAXDIMENSION];
-
 // This is quite slow, but it avoids bookkeeping when building, which is far more important.
-void printLayout() {
+void printLayout(long long *cellUsedByDim) {
   int i;
   int index, d;
   long long used = 0;
@@ -487,9 +480,9 @@ void printLayout() {
 
 void printHistogram();
 
-void placeCube(int c, int dim, int index) {
+void placeCube(int c, int dim, int index, long long *cellUsed, long long *cellUsedByDim) {
   // This cell and all cells in the cube are used.
-  cellUsed |= dimoffsets[dim] << c;
+  *cellUsed |= dimoffsets[dim] << c;
 
   // And it's used in dim, for checking adjacent cubes in dim.
   cellUsedByDim[dim] |= (1LL << c);
@@ -500,9 +493,9 @@ void placeCube(int c, int dim, int index) {
   placedCubes.len++;
 }
 
-void placeCubeNoCache(int c, int dim, int index) {
+void placeCubeNoCache(int c, int dim, int index, long long *cellUsed, long long *cellUsedByDim) {
   // This cell and all cells in the cube are used.
-  cellUsed |= dimoffsets[dim] << c;
+  *cellUsed |= dimoffsets[dim] << c;
 
   // And it's used in dim, for checking adjacent cubes in dim.
   cellUsedByDim[dim] |= (1LL << c);
@@ -510,9 +503,9 @@ void placeCubeNoCache(int c, int dim, int index) {
   placedCubes.len++;
 }
 
-void removeCube(int c, int dim) {
+void removeCube(int c, int dim, long long *cellUsed, long long *cellUsedByDim) {
   // This cell and all cells in the cube are now unused.
-  cellUsed &= ~(dimoffsets[dim] << c);
+  *cellUsed &= ~(dimoffsets[dim] << c);
 
   // And it's no longer used in dim, for checking adjacent cubes in dim.
   cellUsedByDim[dim] &= ~(1LL << c);
@@ -526,12 +519,12 @@ int real;
 long long displayTotal;
 
 
-int buildLayoutNoCache(int index, int count, int d, int c);
-int buildLayoutCountNoCache(int index, int count, int d, int c);
+int buildLayoutNoCache(int index, int count, int d, int c, long long *cellUsed, long long *cellUsedByDim);
+int buildLayoutCountNoCache(int index, int count, int d, int c, long long *cellUsed, long long *cellUsedByDim);
 #ifdef DISPLAYDEPTH
-int buildLayoutNoDisplay(int index, int count, int d, int c);
-int buildLayoutNoCacheNoDisplay(int index, int count, int d, int c);
-int buildLayoutNoDisplayNoCache(int index, int count, int d, int c);
+int buildLayoutNoDisplay(int index, int count, int d, int c, long long *cellUsed, long long *cellUsedByDim);
+int buildLayoutNoCacheNoDisplay(int index, int count, int d, int c, long long *cellUsed, long long *cellUsedByDim);
+int buildLayoutNoDisplayNoCache(int index, int count, int d, int c, long long *cellUsed, long long *cellUsedByDim);
 #endif
 
 #define LAYOUTNAME
