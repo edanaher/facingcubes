@@ -21,12 +21,12 @@ int hist_timeout_counter = 0;
 #endif
 
 #ifndef CACHESIZE
-#define CACHESIZE (1LL<<34)
+#define CACHESIZE (1LL<<32)
 #endif
 
 #ifndef CACHEMAPSIZE
-// The five-millionth prime; will use just under 700MB of RAM.
-#define CACHEMAPSIZE 86028121
+// The ten-millionth prime; will use just under 700MB of RAM.
+#define CACHEMAPSIZE 179424691
 #endif
 
 #ifndef CACHEDEPTH
@@ -74,8 +74,8 @@ placed_cubes_t placedCubes;
 
 // A packed array of placed_cubes;
 unsigned char *cache;
-unsigned long long cachetail;
-unsigned long long *cachemap;
+unsigned int cachetail;
+unsigned int *cachemap;
 
 void initPermutations() {
   int d, i, b, p;
@@ -116,9 +116,9 @@ void initCache() {
     printf("Failure to allocate cache of size %lld\n", CACHESIZE);
     exit(1);
   }
-  cachemap = calloc(CACHEMAPSIZE, sizeof(unsigned long long));
+  cachemap = calloc(CACHEMAPSIZE, sizeof(unsigned int));
   if(!cachemap) {
-    printf("Failure to allocate cachemap of size %d * %lu\n", CACHEMAPSIZE, sizeof(unsigned long long));
+    printf("Failure to allocate cachemap of size %d * %lu\n", CACHEMAPSIZE, sizeof(unsigned int));
     exit(1);
   }
 }
@@ -240,7 +240,6 @@ void addToCache() {
 
     cache[cachetail++] = placedCubes.len;
     for(i = 0; i < placedCubes.len; i++) {
-      cache[cachetail++] = flippedCubes.cubes[i].index;
       cache[cachetail++] = flippedCubes.cubes[i].dim;
       cache[cachetail++] = flippedCubes.cubes[i].coord;
     }
@@ -264,11 +263,9 @@ int checkCacheElement(placed_cubes_t *cubes, unsigned long long e) {
   if(cache[e] != cubes->len)
     return 0;
   for(j = 0; j < cubes->len; j++) {
-    if(cache[e + 1 + 3*j] != cubes->cubes[j].index)
+    if(cache[e + 1 + 2*j] != cubes->cubes[j].dim)
       return 0;
-    if(cache[e + 2 + 3*j] != cubes->cubes[j].dim)
-      return 0;
-    if(cache[e + 3 + 3*j] != cubes->cubes[j].coord)
+    if(cache[e + 2 + 2*j] != cubes->cubes[j].coord)
       return 0;
   }
   //printf("Found in cache: (%d) ", i);
@@ -606,7 +603,7 @@ void printProgress(int result) {
       fprintf(stderr, " %lld", counts[i][j]);
   }
   fprintf(stderr, "  %lld", counts[i][0]);
-  fprintf(stderr, "  %lld/%dM; %lld/%lldM; +%lld ++%lld =%lld", cacheLoad, CACHEMAPSIZE / 1000000, cachetail, CACHESIZE / 1000000, cacheConflicts, cacheSemiConflicts, (global_current_start_time + (now - global_current_start_time) * total_histograms / global_progress) / 1000000);
+  fprintf(stderr, "  %lld/%dM; %uk/%lldM; +%lld ++%lld =%lld", cacheLoad, CACHEMAPSIZE / 1000000, cachetail, CACHESIZE / 1000000, cacheConflicts, cacheSemiConflicts, (global_current_start_time + (now - global_current_start_time) * total_histograms / global_progress) / 1000000);
   fprintf(stderr, "\n");
 }
 
@@ -644,7 +641,7 @@ void buildHistograms(int index) {
         printf(" %lld", counts[i][j]);
     }
     printf("  %lld", counts[i][0]);
-    printf("  %lld/%dM; %lld/%lldM; +%lld ++%lld", cacheLoad, CACHEMAPSIZE / 1000000, cachetail, CACHESIZE / 1000000, cacheConflicts, cacheSemiConflicts);
+    printf("  %lld/%dM; %uk/%lldM; +%lld ++%lld", cacheLoad, CACHEMAPSIZE / 1000000, cachetail / 1000, CACHESIZE / 1000000, cacheConflicts, cacheSemiConflicts);
     printf("\n");
     if(!isatty(STDOUT_FILENO))
       printProgress(result);
