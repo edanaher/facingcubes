@@ -8,7 +8,7 @@ while grep -q Timeout layout.6.all; do
     layout="$a $b $c $d $e $f $g"
     echo Starting $layout
     sed "/^$layout/ s#.*#$layout Working#" -i layout.6.all
-    time nice -n19 ./layout6stable $layout |
+    `which time` nice -n19 ./layout6stable $layout |
       xargs -I {} sed "/^$layout/ s#.*#{}#" -i layout.6.all
   done
 

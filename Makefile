@@ -11,6 +11,7 @@ OPTFLAGS=-O3 ${CFLAGS}
 # - CACHEDEPTH: How many layers of the search tree to cache
 # - FASTHASH: Use a less precise but faster hash function
 # - DISPLAYDEPTH: How deep to go for display purposes
+# - KEEPPROGRESS: Keep this many lines on stderr for later information
 # - BIRTHDAYHASH: Store 1 << BIRTHDAYHASH hashes for each value to reduce lookup time by the same value.a
 #   						  A straightforward time/space tradeoff.
 
@@ -24,7 +25,7 @@ layout6: layout.c buildlayout.c
 	${CC} layout.c -olayout6 ${OPTFLAGS} -DDIMENSION=6 -DCACHEDEPTH=6
 
 layout6stable: layout.c buildlayout.c
-	${CC} layout.c -olayout6stable ${OPTFLAGS} -DDIMENSION=6 -DCACHEDEPTH=7 -DDISPLAYDEPTH=5 -DBIRTHDAYHASH=1
+	${CC} layout.c -olayout6stable ${OPTFLAGS} -DDIMENSION=6 -DCACHEDEPTH=7 -DKEEPPROGRESS=20 -DDISPLAYDEPTH=5 -DBIRTHDAYHASH=1
 
 layout6timed: layout.c buildlayout.c
 	${CC} layout.c -olayout6timed ${OPTFLAGS} -DDIMENSION=6 -DTIMELIMIT=600 -DCACHEDEPTH=4
