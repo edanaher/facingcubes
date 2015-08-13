@@ -7,13 +7,13 @@
 // - index: which histogram index
 // - count: which element within this histogram index
 // - d: current dimension index
-int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c, long long *cellUsed, long long *cellUsedByDim) {
+int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c, long long *cellUsed, long long *cellUsedByDim, placed_cubes_t *placedCubes) {
   int dim = dims[global_dim - index][d];
   int b, success = 0;
 
 #if !defined(NOCACHE)
-  if(placedCubes.len >= CACHEDEPTH)
-    return buildLayoutNameSuffix(LAYOUTNAME,NoCache)(index, count, d, c, cellUsed, cellUsedByDim);
+  if(placedCubes->len >= CACHEDEPTH)
+    return buildLayoutNameSuffix(LAYOUTNAME,NoCache)(index, count, d, c, cellUsed, cellUsedByDim, placedCubes);
 #endif
 
   counts[index][count]++;
@@ -23,7 +23,7 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c, long long *c
 
 #if defined(DISPLAYDEPTH) && !defined(NODISPLAY)
 #ifndef ONLYCOUNT
-  if(placedCubes.len == DISPLAYDEPTH) {
+  if(placedCubes->len == DISPLAYDEPTH) {
     long long now = runningTime();
     clock_t clocknow = clock();
     fprintf(stderr, "%6ld.%03ld/%6lld.%03lld %lld/%lld (%lld +%lld ++%lld; %uM) =%lld/%lld  \033[1A\n", clocknow / CLOCKS_PER_SEC, clocknow / (CLOCKS_PER_SEC / 1000) % 1000, now / 1000000, (now / 1000) % 1000, counts[index][count], displayTotal, cacheLoad, cacheConflicts, cacheSemiConflicts, cachetail/(1<<20), (global_current_clock_time + (clocknow - global_current_clock_time) * displayTotal / counts[index][count]) / CLOCKS_PER_SEC, (global_current_start_time + (now - global_current_start_time) * displayTotal / counts[index][count]) / 1000000);
@@ -32,12 +32,12 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c, long long *c
       fprintf(stderr, "\n");
 #endif
   }
-  if(placedCubes.len > DISPLAYDEPTH) {
+  if(placedCubes->len > DISPLAYDEPTH) {
     counts[index][count]--;
-    return buildLayoutNameSuffix(LAYOUTNAME,NoDisplay)(index, count, d, c, cellUsed, cellUsedByDim);
+    return buildLayoutNameSuffix(LAYOUTNAME,NoDisplay)(index, count, d, c, cellUsed, cellUsedByDim, placedCubes);
   }
 #else
-  if(placedCubes.len == DISPLAYDEPTH) {
+  if(placedCubes->len == DISPLAYDEPTH) {
     if(!(counts[index][count] % 10000)) {
       long long now = runningTime();
       clock_t clocknow = clock();
@@ -68,7 +68,7 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c, long long *c
       printLayout(cellUsedByDim);
       return 1;
     } else { // Not finished; start next index
-      return buildLayoutName(LAYOUTNAME)(index + 1, 0, 1, 1, cellUsed, cellUsedByDim);
+      return buildLayoutName(LAYOUTNAME)(index + 1, 0, 1, 1, cellUsed, cellUsedByDim, placedCubes);
     }
   } else if(d > dims[global_dim - index][0]) { // Out of dimensions for this index; give up.
     return 0;
@@ -76,7 +76,7 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c, long long *c
 
 #if defined(DISPLAYDEPTH) && !defined(NODISPLAY)
 #ifdef ONLYCOUNT
-  if(placedCubes.len != DISPLAYDEPTH)
+  if(placedCubes->len != DISPLAYDEPTH)
 #endif
 #endif
   for(; c <= baseCellsForDim[dim][0]; c++) {
@@ -94,21 +94,21 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c, long long *c
 
     // Now we know this cube is safe.  Let's go!
 #ifdef NOCACHE
-    placeCubeNoCache(cube, dim, index, cellUsed, cellUsedByDim);
+    placeCubeNoCache(cube, dim, index, cellUsed, cellUsedByDim, placedCubes);
 #else
-    placeCube(cube, dim, index, cellUsed, cellUsedByDim);
+    placeCube(cube, dim, index, cellUsed, cellUsedByDim, placedCubes);
 #endif
     //printf("Placed cube %d %d %d\n", index, dim, cube);
 #if !defined(NOCACHE)
-      if(checkCache()) { // Already saw it, must have failed.
+      if(checkCache(placedCubes)) { // Already saw it, must have failed.
         //printf("cached\n");
-        removeCube(cube, dim, cellUsed, cellUsedByDim);
+        removeCube(cube, dim, cellUsed, cellUsedByDim, placedCubes);
         continue;
       }
-      addToCache();
+      addToCache(placedCubes);
 #endif
-    success = buildLayoutName(LAYOUTNAME)(index, count + 1, d, c + 1, cellUsed, cellUsedByDim);
-    removeCube(cube, dim, cellUsed, cellUsedByDim);
+    success = buildLayoutName(LAYOUTNAME)(index, count + 1, d, c + 1, cellUsed, cellUsedByDim, placedCubes);
+    removeCube(cube, dim, cellUsed, cellUsedByDim, placedCubes);
 
     //printf("Leaving\n");
     //printLayout(cellUsedByDim);
@@ -117,7 +117,7 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c, long long *c
   }
 
   // Finally, let's consider this dimension finished and try the next one:
-  return buildLayoutName(LAYOUTNAME)(index, count, d + 1, 1, cellUsed, cellUsedByDim);
+  return buildLayoutName(LAYOUTNAME)(index, count, d + 1, 1, cellUsed, cellUsedByDim, placedCubes);
 }
 
 int startBuildLayoutName(LAYOUTNAME)() {
@@ -131,6 +131,9 @@ int startBuildLayoutName(LAYOUTNAME)() {
   long long cellUsedByDim[1 << MAXDIMENSION];
   for(i = 0; i < ncells; i++)
     cellUsedByDim[i] = 0;
+
+  placed_cubes_t placedCubes;
+  placedCubes.len = 0;
 
   global_current_start_time = runningTime();
   global_current_clock_time = clock();
@@ -147,10 +150,10 @@ int startBuildLayoutName(LAYOUTNAME)() {
   cachemap = calloc(CACHEMAPSIZE, sizeof(unsigned long long));
   for(index = 0; !histogram[index]; index++);
   if(index == global_dim) // Don't add a simple cube; it makes things sad.
-    return buildLayoutName(LAYOUTNAME)(index - 1, 0, 1, 1, &cellUsed, cellUsedByDim);
-  placeCube(0, dims[global_dim - index][1], index, &cellUsed, cellUsedByDim);
-  int success = buildLayoutName(LAYOUTNAME)(index, 1, 1, 2, &cellUsed, cellUsedByDim);
-  removeCube(0, dims[global_dim - index][1], &cellUsed, cellUsedByDim);
+    return buildLayoutName(LAYOUTNAME)(index - 1, 0, 1, 1, &cellUsed, cellUsedByDim, &placedCubes);
+  placeCube(0, dims[global_dim - index][1], index, &cellUsed, cellUsedByDim, &placedCubes);
+  int success = buildLayoutName(LAYOUTNAME)(index, 1, 1, 2, &cellUsed, cellUsedByDim, &placedCubes);
+  removeCube(0, dims[global_dim - index][1], &cellUsed, cellUsedByDim, &placedCubes);
   return success;
 }
 

@@ -70,8 +70,6 @@ typedef struct {
   placed_cube_t cubes[1 << (MAXDIMENSION - 1)];
 } placed_cubes_t;
 
-placed_cubes_t placedCubes;
-
 // A packed array of placed_cubes;
 unsigned char *cache;
 unsigned int cachetail;
@@ -177,19 +175,19 @@ void getSkipDims(placed_cubes_t *cubes, int *skipDims, int *skipDimsMask) {
 long long int cacheConflicts = 0;
 long long int cacheSemiConflicts = 0;
 long long int cacheLoad = 0;
-void addToCache() {
+void addToCache(placed_cubes_t *placedCubes) {
   int i;
   int skipDims, skipDimsMask;
 
-  getSkipDims(&placedCubes, &skipDims, &skipDimsMask);
+  getSkipDims(placedCubes, &skipDims, &skipDimsMask);
   debugcache(printf("skipDims is %d/%d\n", skipDims, skipDimsMask));
 
   placed_cubes_t flippedCubes;
-  flippedCubes.len = placedCubes.len;
-  for(i = 0; i < placedCubes.len; i++) {
-    flippedCubes.cubes[i].index = placedCubes.cubes[i].index;
-    flippedCubes.cubes[i].dim = placedCubes.cubes[i].dim;
-    flippedCubes.cubes[i].coord = placedCubes.cubes[i].coord;
+  flippedCubes.len = placedCubes->len;
+  for(i = 0; i < placedCubes->len; i++) {
+    flippedCubes.cubes[i].index = placedCubes->cubes[i].index;
+    flippedCubes.cubes[i].dim = placedCubes->cubes[i].dim;
+    flippedCubes.cubes[i].coord = placedCubes->cubes[i].coord;
   }
 #ifdef BIRTHDAYHASH
   int flip_dims, netFlipper = 0, lastFlip = 0;
@@ -197,12 +195,12 @@ void addToCache() {
   // If flipping along an axis doesn't change any cubes, don't (re)cache that flip.
   int ignoreFlipDims = 0;
   for(flip_dims = (1 << (global_dim - BIRTHDAYHASH)); flip_dims < (1 << global_dim); flip_dims <<= 1) {
-    for(i = 0; i < placedCubes.len; i++) {
+    for(i = 0; i < placedCubes->len; i++) {
       int flipped = flippedCubes.cubes[i].coord ^ (flip_dims & ~flippedCubes.cubes[i].dim);
       if(flipped != flippedCubes.cubes[i].coord)
         break;
     }
-    if(i == placedCubes.len)
+    if(i == placedCubes->len)
       ignoreFlipDims |= flip_dims;
   }
 
@@ -215,12 +213,12 @@ void addToCache() {
     int realFlipDims = flip_dims | skipDims;
     netFlipper = realFlipDims ^ lastFlip;
     lastFlip = realFlipDims;
-    for(i = 0; i < placedCubes.len; i++)
+    for(i = 0; i < placedCubes->len; i++)
       flippedCubes.cubes[i].coord ^= (netFlipper & ~flippedCubes.cubes[i].dim);
 #else
     debugcache(printf("Adding to cache unskipped, "));
     debugcache(printPlacedCubes(&flippedCubes));
-    for(i = 0; i < placedCubes.len; i++)
+    for(i = 0; i < placedCubes->len; i++)
       flippedCubes.cubes[i].coord ^= (skipDims & ~flippedCubes.cubes[i].dim);
 
 #endif
@@ -238,8 +236,8 @@ void addToCache() {
     cachemap[h] = cachetail;
     cacheLoad++;
 
-    cache[cachetail++] = placedCubes.len;
-    for(i = 0; i < placedCubes.len; i++) {
+    cache[cachetail++] = placedCubes->len;
+    for(i = 0; i < placedCubes->len; i++) {
       cache[cachetail++] = flippedCubes.cubes[i].dim;
       cache[cachetail++] = flippedCubes.cubes[i].coord;
     }
@@ -286,23 +284,23 @@ int checkCacheRotation(placed_cubes_t *cubes) {
 
 int nrotationsChecked = 0;
 int ncacheHits = 0;
-int checkCache() {
+int checkCache(placed_cubes_t *placedCubes) {
   int flip_dims = 0, netFlipper = 0, lastFlip = 0;
   int i, perm;
   placed_cubes_t cubes;
   int skipDimsMask, skipDimsMaskBase;
   int skipDims, skipDimsBase;
 
-  getSkipDims(&placedCubes, &skipDimsBase, &skipDimsMaskBase);
-  cubes.len = placedCubes.len;
+  getSkipDims(placedCubes, &skipDimsBase, &skipDimsMaskBase);
+  cubes.len = placedCubes->len;
 
   debugcache(printf("checking placement: "));
   debugcache(printPlacedCubes(&placedCubes));
   for(perm = 0; perm < npermutations; perm++) {
-    for(i = 0; i < placedCubes.len; i++) {
-      cubes.cubes[i].index = placedCubes.cubes[i].index;
-      cubes.cubes[i].dim = rotates[perm][placedCubes.cubes[i].dim];
-      cubes.cubes[i].coord = rotates[perm][placedCubes.cubes[i].coord];
+    for(i = 0; i < placedCubes->len; i++) {
+      cubes.cubes[i].index = placedCubes->cubes[i].index;
+      cubes.cubes[i].dim = rotates[perm][placedCubes->cubes[i].dim];
+      cubes.cubes[i].coord = rotates[perm][placedCubes->cubes[i].coord];
     }
     skipDims = rotates[perm][skipDimsBase];
     skipDimsMask = rotates[perm][skipDimsMaskBase];
@@ -351,7 +349,7 @@ int checkCache() {
       int realFlipDims = flip_dims | skipDims;
       netFlipper = realFlipDims ^ lastFlip;
       lastFlip = realFlipDims;
-      for(i = 0; i < placedCubes.len; i++)
+      for(i = 0; i < placedCubes->len; i++)
         cubes.cubes[i].coord ^= (netFlipper & ~cubes.cubes[i].dim);
 
       debugcache(printf("checking reflection %x: ", realFlipDims));
@@ -359,7 +357,7 @@ int checkCache() {
 
       if(checkCacheRotation(&cubes)) {
         debugcache(printf("Cache hit for: "));
-        debugcache(printPlacedCubes(&placedCubes));
+        debugcache(printPlacedCubes(placedCubes));
         debugcache(printf(" on: "));
         debugcache(printPlacedCubes(&cubes));
         ncacheHits++;
@@ -480,37 +478,37 @@ void printLayout(long long *cellUsedByDim) {
 
 void printHistogram();
 
-void placeCube(int c, int dim, int index, long long *cellUsed, long long *cellUsedByDim) {
+void placeCube(int c, int dim, int index, long long *cellUsed, long long *cellUsedByDim, placed_cubes_t *placedCubes) {
   // This cell and all cells in the cube are used.
   *cellUsed |= dimoffsets[dim] << c;
 
   // And it's used in dim, for checking adjacent cubes in dim.
   cellUsedByDim[dim] |= (1LL << c);
 
-  placedCubes.cubes[placedCubes.len].index = index;
-  placedCubes.cubes[placedCubes.len].dim = dim;
-  placedCubes.cubes[placedCubes.len].coord = c;
-  placedCubes.len++;
+  placedCubes->cubes[placedCubes->len].index = index;
+  placedCubes->cubes[placedCubes->len].dim = dim;
+  placedCubes->cubes[placedCubes->len].coord = c;
+  placedCubes->len++;
 }
 
-void placeCubeNoCache(int c, int dim, int index, long long *cellUsed, long long *cellUsedByDim) {
+void placeCubeNoCache(int c, int dim, int index, long long *cellUsed, long long *cellUsedByDim, placed_cubes_t *placedCubes) {
   // This cell and all cells in the cube are used.
   *cellUsed |= dimoffsets[dim] << c;
 
   // And it's used in dim, for checking adjacent cubes in dim.
   cellUsedByDim[dim] |= (1LL << c);
 
-  placedCubes.len++;
+  placedCubes->len++;
 }
 
-void removeCube(int c, int dim, long long *cellUsed, long long *cellUsedByDim) {
+void removeCube(int c, int dim, long long *cellUsed, long long *cellUsedByDim, placed_cubes_t *placedCubes) {
   // This cell and all cells in the cube are now unused.
   *cellUsed &= ~(dimoffsets[dim] << c);
 
   // And it's no longer used in dim, for checking adjacent cubes in dim.
   cellUsedByDim[dim] &= ~(1LL << c);
 
-  placedCubes.len--;
+  placedCubes->len--;
 }
 
 long long counts[MAXDIMENSION + 1][1 << (MAXDIMENSION - 2)];
@@ -519,12 +517,12 @@ int real;
 long long displayTotal;
 
 
-int buildLayoutNoCache(int index, int count, int d, int c, long long *cellUsed, long long *cellUsedByDim);
-int buildLayoutCountNoCache(int index, int count, int d, int c, long long *cellUsed, long long *cellUsedByDim);
+int buildLayoutNoCache(int index, int count, int d, int c, long long *cellUsed, long long *cellUsedByDim, placed_cubes_t *placedCubes);
+int buildLayoutCountNoCache(int index, int count, int d, int c, long long *cellUsed, long long *cellUsedByDim, placed_cubes_t *placedCubes);
 #ifdef DISPLAYDEPTH
-int buildLayoutNoDisplay(int index, int count, int d, int c, long long *cellUsed, long long *cellUsedByDim);
-int buildLayoutNoCacheNoDisplay(int index, int count, int d, int c, long long *cellUsed, long long *cellUsedByDim);
-int buildLayoutNoDisplayNoCache(int index, int count, int d, int c, long long *cellUsed, long long *cellUsedByDim);
+int buildLayoutNoDisplay(int index, int count, int d, int c, long long *cellUsed, long long *cellUsedByDim, placed_cubes_t *placedCubes);
+int buildLayoutNoCacheNoDisplay(int index, int count, int d, int c, long long *cellUsed, long long *cellUsedByDim, placed_cubes_t *placedCubes);
+int buildLayoutNoDisplayNoCache(int index, int count, int d, int c, long long *cellUsed, long long *cellUsedByDim, placed_cubes_t *placedCubes);
 #endif
 
 #define LAYOUTNAME
