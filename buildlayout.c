@@ -23,7 +23,7 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c, long long *c
 
 #if defined(DISPLAYDEPTH) && !defined(NODISPLAY)
 #ifndef ONLYCOUNT
-  if(placedCubes->len == DISPLAYDEPTH) {
+  if(placedCubes->len == DISPLAYDEPTH && count < histogram[index]) {
     long long now = runningTime();
     clock_t clocknow = clock();
     fprintf(stderr, "%6ld.%03ld/%6lld.%03lld %lld/%lld (%lld +%lld ++%lld; %uM) =%lld/%lld  \033[1A\n", clocknow / CLOCKS_PER_SEC, clocknow / (CLOCKS_PER_SEC / 1000) % 1000, now / 1000000, (now / 1000) % 1000, counts[index][count], displayTotal, cacheLoad, cacheConflicts, cacheSemiConflicts, cachetail/(1<<20), (global_current_clock_time + (clocknow - global_current_clock_time) * displayTotal / counts[index][count]) / CLOCKS_PER_SEC, (global_current_start_time + (now - global_current_start_time) * displayTotal / counts[index][count]) / 1000000);
