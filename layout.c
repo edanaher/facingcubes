@@ -620,6 +620,7 @@ void buildHistograms(int index) {
     for(i = 0, c = DISPLAYDEPTH; i <= global_dim && c >= histogram[i]; i++)
       c -= histogram[i];
     displayTotal = counts[i][c];
+    int displayIndex = i;
 #endif
     int result = startBuildLayout();
     if(!result)
@@ -632,7 +633,12 @@ void buildHistograms(int index) {
         printf(" %lld", counts[i][j]);
     }
     printf("  %lld", counts[i][0]);
-    printf("  %lld/%dM; %uk/%lldM; +%lld ++%lld", cacheLoad, CACHEMAPSIZE / 1000000, cachetail / 1000, CACHESIZE / 1000000, cacheConflicts, cacheSemiConflicts);
+    long long runTime = (clock() - global_current_clock_time) / 1000000;
+#ifdef DISPLAYDEPTH
+    printf("  %lld/%dM; %uk/%lldM; +%lld ++%lld T%lld %lld/%lld %lldT", cacheLoad, CACHEMAPSIZE / 1000000, cachetail / 1000, CACHESIZE / 1000000, cacheConflicts, cacheSemiConflicts, runTime, counts[displayIndex][c], displayTotal, runTime * displayTotal / counts[displayIndex][c]);
+#else
+    printf("  %lld/%dM; %uk/%lldM; +%lld ++%lld T%lld", cacheLoad, CACHEMAPSIZE / 1000000, cachetail / 1000, CACHESIZE / 1000000, cacheConflicts, cacheSemiConflicts, runTime);
+#endif
     printf("\n");
     if(!isatty(STDOUT_FILENO))
       printProgress(result);
