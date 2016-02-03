@@ -31,7 +31,16 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c, long long *c
     if(counts[index][count] % (displayTotal / KEEPPROGRESS + 1) == 0)
       fprintf(stderr, "\n");
 #endif
+#ifdef TIMELIMIT
+    //fprintf(stderr, "bail: %lld/%lld       \n", clocknow * 1000000 / CLOCKS_PER_SEC, global_hist_timeout);
+    if(clocknow * 1000000 / CLOCKS_PER_SEC > global_hist_timeout)
+#ifdef TIMELIMITEXPECTED
+      if((global_current_clock_time + (clocknow - global_current_clock_time) * displayTotal / counts[index][count]) / CLOCKS_PER_SEC > TIMELIMITEXPECTED)
+#endif /* TIMELIMITEXPECTED */
+      return -1;
+#endif /* TIMELIMIT */
   }
+
   if(placedCubes->len > DISPLAYDEPTH) {
     counts[index][count]--;
     return buildLayoutNameSuffix(LAYOUTNAME,NoDisplay)(index, count, d, c, cellUsed, cellUsedByDim, placedCubes);
@@ -45,16 +54,6 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c, long long *c
     }
   }
 #endif
-#endif
-
-#ifdef TIMELIMIT
-  // Tradeoff accuracy for less time wasted checking
-  if(++hist_timeout_counter > 1000000 * TIMELIMIT) {
-    //fprintf(stderr, "bail: %lld/%lld\n", runningTime(), global_hist_timeout);
-    if(runningTime() > global_hist_timeout)
-      return -1;
-    hist_timeout_counter = 0;
-  }
 #endif
 
   if(count == histogram[index]) { // Placed all of this index
