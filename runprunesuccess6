@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# Look for timeout lines, and run them.  Then take the output and update
+# layout.6.all for each line of output.  (This update MUST be sequential to
+# avoid sed reading a partial file and truncating the output.)
+while grep Success layout.6.all | grep -v T$ -q; do
+  nlines=`cat layout.6.all | grep Success | grep -v T$ | wc -l`
+  w=$((1+$RANDOM % $nlines))
+  cat layout.6.all | grep Success | grep -v T$ | head -n$w | tail -n1 | while read a b c d e f g rest; do
+    layout="$a $b $c $d $e $f $g"
+    echo Starting $layout
+#    sed "/^$layout/ s#.*#$layout Working#" -i layout.6.all
+    line=$(`which time` nice -n19 ./layout6prune $layout)
+    if echo $line | grep -q Success; then
+      sed "/^$layout/ s#.*#$line#" -i layout.6.all
+    fi
+  done
+done
