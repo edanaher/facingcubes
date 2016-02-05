@@ -7,6 +7,7 @@ OPTFLAGS=-O3 ${CFLAGS}
 # - DIMENSION: hardcode dimension instead of using ARGV[0]
 # - TIMELIMIT: how many seconds to spend on each case before bailing
 # - TIMELIMITEXPECTED: after TIMELIMIT, keep going if expected time is less than this
+# - PRUNEMATCHIGNS: Check if a maximal matching is the right size
 # - CACHESIZE: how much space to use for the cache
 # - CACHEMAPSIZE: how many elements to put in the cachemap
 # - CACHEDEPTH: How many layers of the search tree to cache
@@ -23,7 +24,7 @@ layout5: layout.c buildlayout.c
 	${CC} layout.c -olayout5 ${OPTFLAGS} -DDIMENSION=5
 
 layout6: layout.c buildlayout.c Makefile
-	${CC} layout.c -olayout6 ${OPTFLAGS} -DDIMENSION=6 -DCACHEDEPTH=6 -DKEEPPROGRESS=20 -DDISPLAYDEPTH=5 -DBIRTHDAYHASH=1
+	${CC} layout.c -olayout6 ${OPTFLAGS} -DDIMENSION=6 -DCACHEDEPTH=6 -DKEEPPROGRESS=20 -DDISPLAYDEPTH=5 -DBIRTHDAYHASH=1 -DPRUNEMATCHINGS
 
 layout6stable: layout.c buildlayout.c
 	${CC} layout.c -olayout6stable ${OPTFLAGS} -DDIMENSION=6 -DCACHEDEPTH=6 -DKEEPPROGRESS=20 -DDISPLAYDEPTH=5 -DBIRTHDAYHASH=1
