@@ -156,6 +156,7 @@ int startBuildLayoutName(LAYOUTNAME)() {
     for(j = 0; j < histogram[i]; j++)
       counts[i][j] = 0;
   counts[global_dim][0] = 0;
+  matchingPruned = 0;
   cachetail = 1;
   // This is sparse, so it's faster to free and re-alloc than to zero out.
   free(cachemap);

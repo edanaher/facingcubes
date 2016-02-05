@@ -22,8 +22,8 @@ layout: layout.c buildlayout.c
 layout5: layout.c buildlayout.c
 	${CC} layout.c -olayout5 ${OPTFLAGS} -DDIMENSION=5
 
-layout6: layout.c buildlayout.c
-	${CC} layout.c -olayout6 ${OPTFLAGS} -DDIMENSION=6 -DCACHEDEPTH=6
+layout6: layout.c buildlayout.c Makefile
+	${CC} layout.c -olayout6 ${OPTFLAGS} -DDIMENSION=6 -DCACHEDEPTH=6 -DKEEPPROGRESS=20 -DDISPLAYDEPTH=5 -DBIRTHDAYHASH=1
 
 layout6stable: layout.c buildlayout.c
 	${CC} layout.c -olayout6stable ${OPTFLAGS} -DDIMENSION=6 -DCACHEDEPTH=6 -DKEEPPROGRESS=20 -DDISPLAYDEPTH=5 -DBIRTHDAYHASH=1

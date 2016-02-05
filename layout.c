@@ -587,6 +587,7 @@ int maxMatching(long long *cellUsed) {
 }
 
 long long counts[MAXDIMENSION + 1][1 << (MAXDIMENSION - 2)];
+long long matchingPruned;
 
 int real;
 long long displayTotal;
@@ -710,9 +711,9 @@ void buildHistograms(int index) {
     printf("  %lld", counts[i][0]);
     long long runTime = (clock() - global_current_clock_time) / 1000000;
 #ifdef DISPLAYDEPTH
-    printf("  %lld/%dM; %uk/%lldM; +%lld ++%lld T%lld %lld/%lld %lldT", cacheLoad, CACHEMAPSIZE / 1000000, cachetail / 1000, CACHESIZE / 1000000, cacheConflicts, cacheSemiConflicts, runTime, counts[displayIndex][c], displayTotal, runTime * displayTotal / counts[displayIndex][c]);
+    printf("  %lld/%dM; %uk/%lldM; +%lld ++%lld T%lld %lld/%lld %lldT m%lld", cacheLoad, CACHEMAPSIZE / 1000000, cachetail / 1000, CACHESIZE / 1000000, cacheConflicts, cacheSemiConflicts, runTime, counts[displayIndex][c], displayTotal, runTime * displayTotal / (counts[displayIndex][c] || 1), matchingPruned);
 #else
-    printf("  %lld/%dM; %uk/%lldM; +%lld ++%lld T%lld", cacheLoad, CACHEMAPSIZE / 1000000, cachetail / 1000, CACHESIZE / 1000000, cacheConflicts, cacheSemiConflicts, runTime);
+    printf("  %lld/%dM; %uk/%lldM; +%lld ++%lld T%lld m%lld", cacheLoad, CACHEMAPSIZE / 1000000, cachetail / 1000, CACHESIZE / 1000000, cacheConflicts, cacheSemiConflicts, runTime, matchingPruned);
 #endif
     printf("\n");
     if(!isatty(STDOUT_FILENO))
