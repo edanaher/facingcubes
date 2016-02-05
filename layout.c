@@ -517,7 +517,7 @@ int maxMatching(long long *cellUsed) {
   int head, tail;
   long long visited;
   int match[1 << MAXDIMENSION];
-  int b, c, i;
+  int b, c, c2;
   int matchsize = 0;
 
   long long leftNodes = 0;
@@ -530,8 +530,8 @@ int maxMatching(long long *cellUsed) {
     }
   }
 
-  for(i = 0; i < ncells; i++)
-    match[i] = -1;
+  for(c = 0; c < ncells; c++)
+    match[c] = -1;
 
   while(1) {
     visited = 0;
@@ -552,14 +552,18 @@ int maxMatching(long long *cellUsed) {
       // If we're on a left node...
       if(leftNodes & (1LL << c)) {
         for(b = 1; b < ncells; b <<= 1) {
-          int c2 = c ^ b;
+          c2 = c ^ b;
           // If c to c2 isn't already matched, and c2 is unused and not yet visited this BFS, add it to the queue
           if(match[c] != c2 && !(*cellUsed & (1LL << c2)) && !(visited & (1LL << c2))) {
             prev[c2] = c;
+            if(match[c2] == -1)
+              break;
             queue[tail++] = c2;
             visited |= 1LL << c2;
           }
         }
+        if(b != ncells)
+          break;
       } else { // We're on a right node, so follow back its match (or if it's unmatched, we're done)
         if(match[c] == -1) {
           break;
@@ -576,10 +580,10 @@ int maxMatching(long long *cellUsed) {
     // BFS didn't find a path; break;
     if(head == tail)
       break;
-    while(c != -1) {
-      match[c] = prev[c];
-      match[prev[c]] = c;
-      c = prev[prev[c]];
+    while(c2 != -1) {
+      match[c2] = prev[c2];
+      match[prev[c2]] = c2;
+      c2 = prev[prev[c2]];
     }
     matchsize++;
   }

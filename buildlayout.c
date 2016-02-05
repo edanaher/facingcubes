@@ -76,9 +76,14 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c, long long *c
       printLayout(cellUsedByDim);
       return 1;
     } else { // Not finished; start next index
+      int i, b = 1, matchesLeft = 0;
+      for(i = global_dim - 1; i > d; i--, b <<= 1)
+        matchesLeft += histogram[i] * b;
       int matching = maxMatching(cellUsed);
-      if(matching < histogram[global_dim-1] || matching / 2 > histogram[global_dim-1])
+      if(matching < matchesLeft || matching / 2 > matchesLeft) {
+        matchingPruned++;
         return 0;
+      }
 
       return buildLayoutName(LAYOUTNAME)(index + 1, 0, 1, 1, cellUsed, cellUsedByDim, placedCubes);
     }
