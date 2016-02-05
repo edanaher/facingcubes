@@ -76,6 +76,10 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c, long long *c
       printLayout(cellUsedByDim);
       return 1;
     } else { // Not finished; start next index
+      int matching = maxMatching(cellUsed);
+      if(matching < histogram[global_dim-1] || matching / 2 > histogram[global_dim-1])
+        return 0;
+
       return buildLayoutName(LAYOUTNAME)(index + 1, 0, 1, 1, cellUsed, cellUsedByDim, placedCubes);
     }
   } else if(d > dims[global_dim - index][0]) { // Out of dimensions for this index; give up.

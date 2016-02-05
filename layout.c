@@ -511,6 +511,81 @@ void removeCube(int c, int dim, long long *cellUsed, long long *cellUsedByDim, p
   placedCubes->len--;
 }
 
+int maxMatching(long long *cellUsed) {
+  int prev[1 << MAXDIMENSION];
+  int queue[1 << MAXDIMENSION];
+  int head, tail;
+  long long visited;
+  int match[1 << MAXDIMENSION];
+  int b, c, i;
+  int matchsize = 0;
+
+  long long leftNodes = 0;
+  for(c = 0; c < ncells; c++) {
+    int ones = 0;
+    for(b = 0; b < global_dim; b++)
+      ones += (c >> b) & 1;
+    if(!(ones & 1)) {
+      leftNodes |= (1LL << c);
+    }
+  }
+
+  for(i = 0; i < ncells; i++)
+    match[i] = -1;
+
+  while(1) {
+    visited = 0;
+    head = tail = 0;
+    // Start with the set of unmatched, unused left cells...
+    for(c = 0; c < ncells; c++) {
+      long long selector = 1LL << c;
+      if((leftNodes & selector) && !(*cellUsed & selector) && match[c] == -1) {
+        queue[tail++] = c;
+        visited |= selector;
+        prev[c] = -1;
+      }
+    }
+
+    //BFS for an augmenting path...
+    while(head != tail) {
+      c = queue[head];
+      // If we're on a left node...
+      if(leftNodes & (1LL << c)) {
+        for(b = 1; b < ncells; b <<= 1) {
+          int c2 = c ^ b;
+          // If c to c2 isn't already matched, and c2 is unused and not yet visited this BFS, add it to the queue
+          if(match[c] != c2 && !(*cellUsed & (1LL << c2)) && !(visited & (1LL << c2))) {
+            prev[c2] = c;
+            queue[tail++] = c2;
+            visited |= 1LL << c2;
+          }
+        }
+      } else { // We're on a right node, so follow back its match (or if it's unmatched, we're done)
+        if(match[c] == -1) {
+          break;
+        }
+        int c2 = match[c];
+        if(!(visited & (1LL << c2))) {
+          prev[c2] = c;
+          queue[tail++] = c2;
+          visited |= 1LL << c2;
+        }
+      }
+      head++;
+    }
+    // BFS didn't find a path; break;
+    if(head == tail)
+      break;
+    while(c != -1) {
+      match[c] = prev[c];
+      match[prev[c]] = c;
+      c = prev[prev[c]];
+    }
+    matchsize++;
+  }
+  return matchsize;
+}
+
 long long counts[MAXDIMENSION + 1][1 << (MAXDIMENSION - 2)];
 
 int real;
