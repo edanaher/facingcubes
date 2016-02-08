@@ -13,6 +13,20 @@ TODO: brute failed because there are just too many possible arrangements, there 
 
 This is making good progress.  I've put some terrible hacks in it; there are lots of bit fields floating around that make for very unintuitive code, but they a major speedup.  There's also some terrible hackery with includign buildlayout.c multiple times with different #defines; this avoids some conditionals that actually result in a significant overall speedup.  Sadly, with code this tight, those conditionals actually matter (my unconfirmed suspicion is that adding them in results in extra register spillage, or maybe they're poorly predicted).  These hacks have given a 33% speedup over already very fast code.
 
+### Pruning by matchings
+One big win is finding the size of the maximal matching remaining, and then ensuring that it's roughly the right size.  More specifically:
+
+Consider the number of cubes left that must be matched, either as part of a 1-dimensional pairing or a $d$-dimensional $2^d$ set.  To pair in the former case, this requires a pair of adjacent cubes; in the latter, $2^{d-1}$ pairs of adjacent cubes.  In either case, we can compute how many cubes must be paired to complete the histogram.  (Or equivalently, we know how many 0-dimensional cubes must remain unpaired at the end; the rest of the cubes must be paired.)
+
+Since the implied graph over the hypercube is bipartite (give each vertex of the hypercube a coordinate from {0, 1}^n, and split into odd and even parities), we can compute the maximum matching over the remaining unmatched vertices using standard techniques (ideally, tweaked slightly to improve performance).  If that maximal matching is too small to cover the remaining pairings in the histogram, we needn't bother searching it - there are too many isolated cubes to allow us to pair enough up.  The inverse doesn't work - there may be numerous matchings of the right size, but they may be face-aligned, so we do need to search in that case.  But this can let us prune huge numbers of cases with few unmatched cubes, reducing runtime from decades to minutes.
+
+Moreover, this demonstrates that any histogram with more than half its cubes unpaired can't be made.
+
+It would also be nice to be able to find a minimum maximal matching - a matching that can't be extended, but is as small as possible.  This is because a non-face-aligned layout can't have any unpaired adjacent 0-dimensional cubes; they would be trivially face-aligned.  So if the minimal maximal matching is larger than the number of pairings remaining, then no matter how those pairings are chosen, there will remain an unpaired adjacent pair.  (E.g., suppose we have five one-dimensional pairings left to place, but the minimum maximal matching is of size six.  Then no matter how we place those five pairings, they can't f orm a maximal matching, so that placement can be extended with a sixth pairing, which represents two adjacent unpaired (and hence, face-aligned) cubes.)
+
+Unfortunately, finding a minimal maximal matchings is NP-hard.  But simply taking half the size of the maximum matching provides a lower bound - consider overlaying a matching with $k/2 - 1$ or fewer edges over a maximum matching with $k$ edges.  Each of the $\le k/2 - 2$ edges of the matching can cover at most two vertices used by the maximum matching, for a total of at most $k - 2$ vertices covered.  But we can now pick the two vertices in the maximal matching uncovered by the smaller matching, and use those as the ends of an augmenting path to extend the matching, so it can't be maximal.  (This is a little fuzzy, but Wikipedia confirms that the maximal matching is a 2-approximation of the minimum maximal matching.)
+
+So we can simply compute the maximal matching, and check that the number of remaining pairings to be done is no more than that number, and at least half of it.  This is a *huge* win, reducing the number of unknown histograms from 249 to 98 in under a week, without a significant amount of optimization effort.
 
 brute
 -----
