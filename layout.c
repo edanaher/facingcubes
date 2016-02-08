@@ -511,16 +511,17 @@ void removeCube(int c, int dim, long long *cellUsed, long long *cellUsedByDim, p
   placedCubes->len--;
 }
 
-int maxMatching(long long *cellUsed) {
-  int prev[1 << MAXDIMENSION];
-  int queue[1 << MAXDIMENSION];
-  int head, tail;
-  long long visited;
-  int match[1 << MAXDIMENSION];
-  int b, c, c2;
-  int matchsize = 0;
+int match[1 << MAXDIMENSION];
+int matchsize;
+long long matchingPruned;
+long long leftNodes;
 
-  long long leftNodes = 0;
+void initMaxMatching() {
+  int b, c;
+  for(c = 0; c < ncells; c++)
+    match[c] = -1;
+  matchsize = 0;
+
   for(c = 0; c < ncells; c++) {
     int ones = 0;
     for(b = 0; b < global_dim; b++)
@@ -530,8 +531,21 @@ int maxMatching(long long *cellUsed) {
     }
   }
 
+}
+
+int maxMatching(long long *cellUsed) {
+  int prev[1 << MAXDIMENSION];
+  int queue[1 << MAXDIMENSION];
+  int head, tail;
+  long long visited;
+  int b, c, c2;
+
   for(c = 0; c < ncells; c++)
-    match[c] = -1;
+    if(match[c] != -1 && (*cellUsed & (1LL << c))) {
+      match[match[c]] = -1;
+      match[c] = -1;
+      matchsize--;
+    }
 
   while(1) {
     visited = 0;
@@ -591,7 +605,7 @@ int maxMatching(long long *cellUsed) {
 }
 
 long long counts[MAXDIMENSION + 1][1 << (MAXDIMENSION - 2)];
-long long matchingPruned;
+int nMerges;
 
 int real;
 long long displayTotal;

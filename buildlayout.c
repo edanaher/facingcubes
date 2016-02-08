@@ -76,22 +76,26 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c, long long *c
       printLayout(cellUsedByDim);
       return 1;
     } else { // Not finished; start next index
-#ifdef PRUNEMATCHINGS
-      int i, b = 1, matchesLeft = 0;
-      for(i = global_dim - 1; i > index; i--, b <<= 1)
-        matchesLeft += histogram[i] * b;
-      int matching = maxMatching(cellUsed);
-      if(matching < matchesLeft || matching / 2 > matchesLeft) {
-        matchingPruned++;
-        return 0;
-      }
-#endif /* PRUNEMATCHINGS */
-
       return buildLayoutName(LAYOUTNAME)(index + 1, 0, 1, 1, cellUsed, cellUsedByDim, placedCubes);
     }
   } else if(d > dims[global_dim - index][0]) { // Out of dimensions for this index; give up.
     return 0;
   }
+
+
+#ifdef PRUNEMATCHINGS
+  if(placedCubes->len < nMerges - PRUNEMATCHINGS) {
+    int i, matchesLeft = 0;
+    for(i = global_dim - 1, b = 1; i > index; i--, b <<= 1)
+      matchesLeft += histogram[i] * b;
+    matchesLeft += (histogram[i] - count) * b;
+    int matching = maxMatching(cellUsed);
+    if(matching < matchesLeft || matching / 2 > matchesLeft) {
+      matchingPruned++;
+      return 0;
+    }
+  }
+#endif /* PRUNEMATCHINGS */
 
 #if defined(DISPLAYDEPTH) && !defined(NODISPLAY)
 #ifdef ONLYCOUNT
@@ -163,6 +167,10 @@ int startBuildLayoutName(LAYOUTNAME)() {
     for(j = 0; j < histogram[i]; j++)
       counts[i][j] = 0;
   counts[global_dim][0] = 0;
+  initMaxMatching();
+  nMerges = 0;
+  for(i = 0; i < global_dim; i++)
+    nMerges += histogram[i];
   matchingPruned = 0;
   cachetail = 1;
   // This is sparse, so it's faster to free and re-alloc than to zero out.
