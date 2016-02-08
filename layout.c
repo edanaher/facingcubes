@@ -553,7 +553,7 @@ int maxMatching(long long *cellUsed) {
     // Start with the set of unmatched, unused left cells...
     for(c = 0; c < ncells; c++) {
       long long selector = 1LL << c;
-      if((leftNodes & selector) && !(*cellUsed & selector) && match[c] == -1) {
+      if(!((*cellUsed >> c) & 1) && ((leftNodes >> c) & 1) && match[c] == -1) {
         queue[tail++] = c;
         visited |= selector;
         prev[c] = -1;
@@ -564,11 +564,11 @@ int maxMatching(long long *cellUsed) {
     while(head != tail) {
       c = queue[head];
       // If we're on a left node...
-      if(leftNodes & (1LL << c)) {
+      if((leftNodes >> c) & 1) {
         for(b = 1; b < ncells; b <<= 1) {
           c2 = c ^ b;
           // If c to c2 isn't already matched, and c2 is unused and not yet visited this BFS, add it to the queue
-          if(match[c] != c2 && !(*cellUsed & (1LL << c2)) && !(visited & (1LL << c2))) {
+          if(match[c] != c2 && !((*cellUsed >> c2) & 1) && !((visited >> c2) & 1)) {
             prev[c2] = c;
             if(match[c2] == -1)
               break;
