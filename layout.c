@@ -579,9 +579,6 @@ int maxMatching(long long *cellUsed) {
         if(b != ncells)
           break;
       } else { // We're on a right node, so follow back its match (or if it's unmatched, we're done)
-        if(match[c] == -1) {
-          break;
-        }
         int c2 = match[c];
         if(!(visited & (1LL << c2))) {
           prev[c2] = c;
