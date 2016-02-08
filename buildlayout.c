@@ -161,7 +161,7 @@ int startBuildLayoutName(LAYOUTNAME)() {
   global_current_start_time = runningTime();
   global_current_clock_time = clock();
 #ifdef TIMELIMIT
-  global_hist_timeout = runningTime() + TIMELIMIT * 1000000;
+  global_hist_timeout = runningTime() + TIMELIMIT * 1000000LL;
 #endif
   for(i = 0; i < global_dim; i++)
     for(j = 0; j < histogram[i]; j++)
