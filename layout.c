@@ -548,7 +548,7 @@ int maxMatching(long long *cellUsed) {
     }
 
   while(1) {
-    visited = 0;
+    visited = *cellUsed;
     head = tail = 0;
     // Start with the set of unmatched, unused left cells...
     for(c = 0; c < ncells; c++) {
@@ -568,7 +568,7 @@ int maxMatching(long long *cellUsed) {
         for(b = 1; b < ncells; b <<= 1) {
           c2 = c ^ b;
           // If c to c2 isn't already matched, and c2 is unused and not yet visited this BFS, add it to the queue
-          if(match[c] != c2 && !((*cellUsed >> c2) & 1) && !((visited >> c2) & 1)) {
+          if(!((visited >> c2) & 1) && match[c] != c2) {
             prev[c2] = c;
             if(match[c2] == -1)
               break;
