@@ -552,10 +552,9 @@ int maxMatching(long long *cellUsed) {
     head = tail = 0;
     // Start with the set of unmatched, unused left cells...
     for(c = 0; c < ncells; c++) {
-      long long selector = 1LL << c;
-      if(!((*cellUsed >> c) & 1) && ((leftNodes >> c) & 1) && match[c] == -1) {
+      if(!((visited >> c) & 1) && ((leftNodes >> c) & 1) && match[c] == -1) {
         queue[tail++] = c;
-        visited |= selector;
+        visited |= 1LL < c;
         prev[c] = -1;
       }
     }
