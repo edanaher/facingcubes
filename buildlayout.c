@@ -50,7 +50,7 @@ int buildLayoutName(LAYOUTNAME)(int index, int count, int d, int c, long long *c
 
 #ifdef TIMELIMIT
   // Tradeoff accuracy for less time wasted checking
-  if(++hist_timeout_counter > 100000 * TIMELIMIT) {
+  if(++hist_timeout_counter > 100000LL * TIMELIMIT) {
     clock_t clocknow = clock();
     if(clocknow * 1000000 / CLOCKS_PER_SEC > global_hist_timeout) {
 #ifdef TIMELIMITEXPECTED
