@@ -17,7 +17,7 @@ int ncells;
 
 #ifdef TIMELIMIT
 unsigned long long global_hist_timeout;
-int hist_timeout_counter = 0;
+long long hist_timeout_counter = 0;
 #endif
 
 #ifndef CACHESIZE
