@@ -26,6 +26,8 @@ It would also be nice to be able to find a minimum maximal matching - a matching
 
 Unfortunately, finding a minimal maximal matchings is NP-hard.  But simply taking half the size of the maximum matching provides a lower bound - consider overlaying a matching with $k/2 - 1$ or fewer edges over a maximum matching with $k$ edges.  Each of the $\le k/2 - 2$ edges of the matching can cover at most two vertices used by the maximum matching, for a total of at most $k - 2$ vertices covered.  But we can now pick the two vertices in the maximal matching uncovered by the smaller matching, and use those as the ends of an augmenting path to extend the matching, so it can't be maximal.  (This is a little fuzzy, but Wikipedia confirms that the maximal matching is a 2-approximation of the minimum maximal matching.)
 
+Or, for a simpler (and less handwavy) proof, consider the $k$ edges of the maximum matching directly.  Each of the $< k/2$ edges of a hypothetical smaller matching covers two vertices; these two vertices are members of at most two edges of the maximum matching.  So there are less than $2(k/2) = k$ edges with at least one vertex covered by the smaller matching, so there is not only an augmenting path, but a simple edge of the maximum matching which is unmatched.  Clearly, this smaller matching can't be maximal.
+
 So we can simply compute the maximal matching, and check that the number of remaining pairings to be done is no more than that number, and at least half of it.  This is a *huge* win, reducing the number of unknown histograms from 249 to 98 in under a week, without a significant amount of optimization effort.
 
 brute
